@@ -14,6 +14,7 @@
     "android": {
       "package": "com.pawankumar.talkenly",
       "googleServicesFile": "./google-services.json",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#075E54"
@@ -21,9 +22,13 @@
     },
     "plugins": [
       "@react-native-firebase/app",
-      "@react-native-firebase/auth",
-      "expo-dev-client"
+      "@react-native-firebase/auth"
     ],
-    "newArchEnabled": false
+    "newArchEnabled": false,
+    "extra": {
+      "eas": {
+        "projectId": "d1bc7885-11b5-4ee5-9b4f-e17df21a55ed"
+      }
+    }
   }
 }

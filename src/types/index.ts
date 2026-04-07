@@ -10,6 +10,7 @@ export type RootStackParamList = {
     phoneNumber: string;
     confirmation: FirebaseAuthTypes.ConfirmationResult;
   };
+  SetProfile: undefined;
   Home: undefined;
   Chat: { chatId: string; recipientName: string; recipientPhone: string };
   Profile: undefined;

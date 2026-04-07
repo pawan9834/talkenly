@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "292471772120",
+    "project_id": "talkenly",
+    "storage_bucket": "talkenly.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:292471772120:android:05277e0588b54c7df658ad",
+        "android_client_info": {
+          "package_name": "com.pawankumar.talkenly"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBk0biF7aEi-L-q9Bq2wmINnvqnsKlCSZI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
