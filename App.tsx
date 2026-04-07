@@ -1,20 +1,46 @@
+import React, { useEffect } from 'react';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import auth from '@react-native-firebase/auth';
+import AppNavigator from './src/navigation/AppNavigator';
+import { useAuthStore } from './src/store/authStore';
 
 export default function App() {
+  const { setUser, setLoading, loading } = useAuthStore();
+
+  useEffect(() => {
+    // Fires immediately with current auth state,
+    // then again every time user logs in or logs out
+    const unsubscribe = auth().onAuthStateChanged((user) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    return unsubscribe; // Cleanup on unmount
+  }, []);
+
+  // Show spinner while Firebase checks existing login
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#075E54" />
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <StatusBar style="dark" />
+      <AppNavigator />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  loadingContainer: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
   },
 });
