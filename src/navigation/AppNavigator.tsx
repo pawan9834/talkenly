@@ -12,6 +12,7 @@ import ChatScreen from '@/screens/ChatScreen';
 import ProfileScreen from '@/screens/ProfileScreen';
 import LoginScreen from '@/screens/LoginScreen';
 import OtpScreen from '@/screens/OtpScreen';
+import SetProfileScreen from '@/screens/SetProfileScreen';
 
 
 
@@ -20,7 +21,7 @@ export type { NativeStackNavigationProp };
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
-    const { user } = useAuthStore();
+    const { user, hasProfile } = useAuthStore();
 
     return (
         <NavigationContainer>
@@ -31,11 +32,17 @@ export default function AppNavigator() {
                 }}
             >
                 {user ? (
-                    <>
-                        <Stack.Screen name="Home" component={HomeScreen} />
-                        <Stack.Screen name="Chat" component={ChatScreen} />
-                        <Stack.Screen name="Profile" component={ProfileScreen} />
-                    </>
+                    hasProfile === false ? (
+                        <>
+                            <Stack.Screen name="SetProfile" component={SetProfileScreen} />
+                        </>
+                    ) : (
+                        <>
+                            <Stack.Screen name="Home" component={HomeScreen} />
+                            <Stack.Screen name="Chat" component={ChatScreen} />
+                            <Stack.Screen name="Profile" component={ProfileScreen} />
+                        </>
+                    )
                 ) : (
                     <>
                         <Stack.Screen name="Login" component={LoginScreen} />
