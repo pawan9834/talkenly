@@ -16,7 +16,7 @@ export default function App() {
         // Check if this user already has a Firestore profile
         try {
           const doc = await firestore().collection('users').doc(firebaseUser.uid).get();
-          setHasProfile(doc.exists);
+          setHasProfile(doc.exists());
         } catch {
           setHasProfile(false);
         }
