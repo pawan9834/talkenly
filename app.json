@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -22,7 +22,14 @@
     },
     "plugins": [
       "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow Talkenly to access your contacts to start new chats."
+        }
+      ],
+      "expo-sqlite"
     ],
     "newArchEnabled": false,
     "extra": {

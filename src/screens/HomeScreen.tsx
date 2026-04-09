@@ -1,93 +1,424 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  useColorScheme,
+  StatusBar,
+  Dimensions,
+  Platform,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAuthStore } from '../store/authStore';
-import { auth } from '../lib/firebase';
 import type { RootStackParamList } from '../types';
+import { auth, firestore } from '../lib/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { initDB } from '../lib/database';
+import { syncContacts } from '../lib/contactSync';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
+const { width } = Dimensions.get('window');
+
+// Sample Data for UI
+const CHATS = [
+  { id: '1', name: 'Roshan Business', message: 'Hey, are we still on for the project?', time: '12:45 PM', unread: 2, avatar: 'https://i.pravatar.cc/150?u=1' },
+  { id: '2', name: 'Tech Team', message: 'New update pushed to main branch.', time: '11:20 AM', unread: 0, avatar: 'https://i.pravatar.cc/150?u=2' },
+  { id: '3', name: 'Sara Khan', message: 'The designs look great!', time: 'Yesterday', unread: 5, avatar: 'https://i.pravatar.cc/150?u=3' },
+  { id: '4', name: 'Deepak Dev', message: 'Fixed the auth bug.', time: 'Yesterday', unread: 0, avatar: 'https://i.pravatar.cc/150?u=4' },
+  { id: '5', name: 'Talkenly Community', message: 'Welcome to the group!', time: 'Monday', unread: 12, avatar: 'https://i.pravatar.cc/150?u=5' },
+];
+
 export default function HomeScreen() {
-    const navigation = useNavigation<NavProp>();
-    const { user } = useAuthStore();
+  const navigation = useNavigation<NavProp>();
+  const theme = useColorScheme() ?? 'light';
+  const isDark = theme === 'dark';
 
-    const handleLogout = async () => {
-        await auth().signOut();
-        // Auth state listener in App.tsx navigates back to Login automatically
+  const [activeTab, setActiveTab] = useState<'Chats' | 'Updates' | 'Calls'>('Chats');
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
+  // WhatsApp-inspired Premium Teal Palette
+  const colors = {
+    background: isDark ? '#111B21' : '#FFFFFF',
+    headerBg: isDark ? '#202C33' : '#008080',
+    headerText: '#FFFFFF',
+    tabText: isDark ? '#8696A0' : '#B2DFDB',
+    tabTextActive: isDark ? '#00A884' : '#FFFFFF',
+    tabIndicator: isDark ? '#00A884' : '#FFFFFF',
+    textPrimary: isDark ? '#E9EDEF' : '#111111',
+    textSecondary: isDark ? '#8696A0' : '#667781',
+    border: isDark ? '#222D34' : '#F2F2F2',
+    icon: isDark ? '#8696A0' : '#FFFFFF',
+    unreadBadge: isDark ? '#00A884' : '#25D366',
+    unreadText: isDark ? '#111B21' : '#FFFFFF',
+    fabBg: '#00A884',
+    statusBar: isDark ? '#202C33' : '#008080',
+  };
+
+  useEffect(() => {
+    // Initialize DB and Sync Contacts in background
+    initDB();
+    syncContacts();
+    
+    // Preload user profile from Firestore into AsyncStorage
+    const preloadProfile = async () => {
+      const user = auth().currentUser;
+      if (user) {
+        try {
+          const doc = await firestore().collection('users').doc(user.uid).get();
+          if (doc.exists()) {
+            const data = doc.data();
+            const cacheKey = `profile_cache_${user.uid}`;
+            await AsyncStorage.setItem(cacheKey, JSON.stringify({
+              displayName: data?.displayName,
+              photoURL: data?.photoURL,
+              about: data?.about
+            }));
+          }
+        } catch (e) {
+          console.warn('[Preload] Failed to cache profile:', e);
+        }
+      }
     };
+    
+    preloadProfile();
+  }, []);
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#075E54" />
+  const handleLogout = async () => {
+    try {
+      await auth().signOut();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Talkenly</Text>
-                <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-                    <Text style={styles.logoutText}>Logout</Text>
-                </TouchableOpacity>
+  const renderChatItem = ({ item }: { item: typeof CHATS[0] }) => (
+    <TouchableOpacity
+      style={styles.chatItem}
+      activeOpacity={0.7}
+      onPress={() =>
+        navigation.navigate('Chat', {
+          chatId: item.id,
+          recipientName: item.name,
+          recipientPhone: '+91XXXXXXXXXX'
+        })
+      }
+    >
+      <Image source={{ uri: item.avatar }} style={styles.avatar} />
+      <View style={[styles.chatInfo, { borderBottomColor: colors.border }]}>
+        <View style={styles.chatTopRow}>
+          <Text style={[styles.chatName, { color: colors.textPrimary }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={[styles.chatTime, { color: item.unread > 0 ? colors.unreadBadge : colors.textSecondary }]}>
+            {item.time}
+          </Text>
+        </View>
+        <View style={styles.chatBottomRow}>
+          <Text style={[styles.chatMsg, { color: colors.textSecondary }]} numberOfLines={1}>
+            {item.message}
+          </Text>
+          {item.unread > 0 && (
+            <View style={[styles.unreadBadge, { backgroundColor: colors.unreadBadge }]}>
+              <Text style={styles.unreadText}>{item.unread}</Text>
             </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
-            {/* Placeholder — replaced with chat list in Phase 2 */}
-            <View style={styles.body}>
-                <View style={styles.successBadge}>
-                    <Text style={styles.successIcon}>✓</Text>
-                </View>
-                <Text style={styles.welcomeTitle}>Phase 1 Complete!</Text>
-                <Text style={styles.welcomeSub}>
-                    Logged in as{'\n'}
-                    <Text style={styles.phoneText}>{user?.phoneNumber}</Text>
-                </Text>
-                <Text style={styles.nextStep}>Next: Build real-time chat (Phase 2)</Text>
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.headerBg }]}>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor={colors.statusBar} 
+        translucent={Platform.OS === 'android'}
+      />
 
-                <TouchableOpacity
-                    style={styles.testBtn}
-                    onPress={() =>
-                        navigation.navigate('Chat', {
-                            chatId: 'test-chat-id',
-                            recipientName: 'Test User',
-                            recipientPhone: '+919876543210',
-                        })
-                    }
-                >
-                    <Text style={styles.testBtnText}>Test Chat Screen →</Text>
+      <View style={[styles.main, { backgroundColor: colors.background }]}>
+        {/* HEADER */}
+        <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
+          <Text style={styles.title}>Talkenly</Text>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity style={styles.iconBtn}>
+              <Feather name="camera" size={22} color={colors.icon} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn}>
+              <Ionicons name="search" size={22} color={colors.icon} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setMenuVisible(true)}>
+              <Feather name="more-vertical" size={22} color={colors.icon} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <Modal
+          visible={menuVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setMenuVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
+            <View style={styles.modalOverlay}>
+              <View style={[styles.dropdownMenu, { backgroundColor: colors.background }]}>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => {
+                  setMenuVisible(false);
+                  alert('New Group - Phase 3');
+                }}>
+                  <Text style={[styles.dropdownText, { color: colors.textPrimary }]}>New group</Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.testBtn, { backgroundColor: '#128C7E', marginTop: 10 }]}
-                    onPress={() => navigation.navigate('Profile')}
-                >
-                    <Text style={styles.testBtnText}>Test Profile Screen →</Text>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => {
+                  setMenuVisible(false);
+                  alert('Starred messages - Phase 3');
+                }}>
+                  <Text style={[styles.dropdownText, { color: colors.textPrimary }]}>Starred messages</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => {
+                  setMenuVisible(false);
+                  alert('All messages marked as read');
+                }}>
+                  <Text style={[styles.dropdownText, { color: colors.textPrimary }]}>Read all</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => {
+                  setMenuVisible(false);
+                  navigation.navigate('Settings');
+                }}>
+                  <Text style={[styles.dropdownText, { color: colors.textPrimary }]}>Settings</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => {
+                  setMenuVisible(false);
+                  setLogoutModalVisible(true);
+                }}>
+                  <Text style={[styles.dropdownText, { color: colors.textPrimary }]}>Logout</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-        </SafeAreaView>
-    );
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        <Modal
+          visible={logoutModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setLogoutModalVisible(false)}
+        >
+          <View style={styles.dialogOverlay}>
+            <View style={[styles.dialogBox, { backgroundColor: colors.background }]}>
+              <Text style={[styles.dialogTitle, { color: colors.textPrimary }]}>Logout</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 15 }}>Are you sure you want to log out?</Text>
+              <View style={styles.dialogActions}>
+                <TouchableOpacity style={styles.dialogBtn} onPress={() => setLogoutModalVisible(false)}>
+                  <Text style={styles.dialogBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.dialogBtn} onPress={() => {
+                  setLogoutModalVisible(false);
+                  handleLogout();
+                }}>
+                  <Text style={styles.dialogBtnText}>Log out</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* TABS */}
+        <View style={[styles.tabBar, { backgroundColor: colors.headerBg }]}>
+          {(['Chats', 'Updates', 'Calls'] as const).map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={styles.tabItem}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text style={[
+                styles.tabText,
+                { color: activeTab === tab ? colors.tabTextActive : colors.tabText }
+              ]}>
+                {tab}
+              </Text>
+              {activeTab === tab && (
+                <View style={[styles.indicator, { backgroundColor: colors.tabIndicator }]} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* LIST */}
+        {activeTab === 'Chats' ? (
+          <FlatList
+            data={CHATS}
+            keyExtractor={(item) => item.id}
+            renderItem={renderChatItem}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <View style={styles.center}>
+            <Text style={{ color: colors.textSecondary }}>{activeTab} feature coming soon.</Text>
+          </View>
+        )}
+
+        {/* FAB */}
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: colors.fabBg }]}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('Contacts')}
+        >
+          <MaterialIcons name="chat" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
-    header: {
-        backgroundColor: '#075E54',
-        paddingHorizontal: 16, paddingVertical: 14,
-        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    },
-    headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
-    logoutBtn: { paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', borderRadius: 20 },
-    logoutText: { color: '#fff', fontSize: 13 },
-
-    body: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
-    successBadge: {
-        width: 72, height: 72, borderRadius: 36,
-        backgroundColor: '#e8f5e9', justifyContent: 'center', alignItems: 'center', marginBottom: 20,
-    },
-    successIcon: { fontSize: 32, color: '#075E54' },
-    welcomeTitle: { fontSize: 24, fontWeight: '700', color: '#111', marginBottom: 12 },
-    welcomeSub: { fontSize: 14, color: '#777', textAlign: 'center', lineHeight: 22, marginBottom: 8 },
-    phoneText: { color: '#075E54', fontWeight: '600' },
-    nextStep: { fontSize: 12, color: '#bbb', marginBottom: 40, fontStyle: 'italic' },
-
-    testBtn: { backgroundColor: '#075E54', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 },
-    testBtnText: { color: '#fff', fontSize: 14, fontWeight: '500' },
+  container: {
+    flex: 1,
+  },
+  main: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    height: 60,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconBtn: {
+    marginLeft: 20,
+    padding: 4,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    height: 48,
+    elevation: 4,
+  },
+  tabItem: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  indicator: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    height: 3,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+  },
+  list: {
+    paddingBottom: 100,
+  },
+  chatItem: {
+    flexDirection: 'row',
+    paddingLeft: 16,
+    height: 76,
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#ccc',
+  },
+  chatInfo: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'center',
+    paddingRight: 16,
+    marginLeft: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  chatTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  chatName: {
+    fontSize: 17,
+    fontWeight: '600',
+    flex: 1,
+  },
+  chatTime: {
+    fontSize: 12,
+  },
+  chatBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  chatMsg: {
+    fontSize: 15,
+    flex: 1,
+    marginRight: 8,
+  },
+  unreadBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  unreadText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.27,
+    shadowRadius: 4.65,
+  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.1)' },
+  dropdownMenu: { position: 'absolute', top: 50, right: 10, borderRadius: 8, paddingVertical: 8, minWidth: 180, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
+  dropdownItem: { paddingHorizontal: 16, paddingVertical: 14 },
+  dropdownText: { fontSize: 16 },
+  dialogOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  dialogBox: { width: '80%', borderRadius: 8, padding: 24, elevation: 5 },
+  dialogTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
+  dialogActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 24 },
+  dialogBtn: { marginLeft: 16, paddingHorizontal: 8, paddingVertical: 4 },
+  dialogBtnText: { fontSize: 15, color: '#00A884', fontWeight: 'bold' },
 });
