@@ -14,7 +14,9 @@ export type RootStackParamList = {
   Home: undefined;
   Chat: { chatId: string; recipientName: string; recipientPhone: string };
   Profile: undefined;
-  NewChat: undefined;
+  Contacts: undefined;
+  Help: undefined;
+  Settings: undefined;
 };
 
 // ─── Firestore Data Models ────────────────────────────────────────────────────
