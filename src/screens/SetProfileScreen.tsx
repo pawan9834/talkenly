@@ -16,6 +16,7 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import storage from '@react-native-firebase/storage';
 import { useAuthStore } from '../store/authStore';
+import { normalizeIndianPhoneNumber } from '../lib/phoneUtils';
 
 export default function SetProfileScreen() {
   const { user, setHasProfile } = useAuthStore();
@@ -58,6 +59,10 @@ export default function SetProfileScreen() {
     
     setLoading(true);
     try {
+      if (!user?.phoneNumber) throw new Error('Phone number not found');
+      const normalizedPhone = normalizeIndianPhoneNumber(user.phoneNumber);
+      if (!normalizedPhone) throw new Error('Invalid phone number format');
+
       let uploadedPhotoUrl = null;
       if (photoUri) {
         uploadedPhotoUrl = await uploadImage(photoUri, user.uid);
@@ -65,7 +70,7 @@ export default function SetProfileScreen() {
 
       const userData = {
         uid: user.uid,
-        phoneNumber: user.phoneNumber,
+        phoneNumber: normalizedPhone,
         displayName: name.trim(),
         photoURL: uploadedPhotoUrl,
         about: 'Hey there! I am using Talkenly.',

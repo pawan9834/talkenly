@@ -12,6 +12,7 @@ import {
   Platform,
   Modal,
   TouchableWithoutFeedback,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -22,6 +23,8 @@ import { auth, firestore } from '../lib/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initDB } from '../lib/database';
 import { syncContacts } from '../lib/contactSync';
+import { normalizeIndianPhoneNumber } from '../lib/phoneUtils';
+import StatusScreen from './StatusScreen';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -44,6 +47,14 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'Chats' | 'Updates' | 'Calls'>('Chats');
   const [menuVisible, setMenuVisible] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
+  const TABS = ['Chats', 'Updates', 'Calls'] as const;
+  const scrollViewRef = React.useRef<ScrollView>(null);
+
+  const handleTabPress = (tab: typeof TABS[number], index: number) => {
+    setActiveTab(tab);
+    scrollViewRef.current?.scrollTo({ x: index * width, animated: true });
+  };
 
   // WhatsApp-inspired Premium Teal Palette
   const colors = {
@@ -76,6 +87,19 @@ export default function HomeScreen() {
           const doc = await firestore().collection('users').doc(user.uid).get();
           if (doc.exists()) {
             const data = doc.data();
+            
+            // Self-healing: Normalize phone number in Firestore if needed
+            const currentPhone = data?.phoneNumber;
+            if (currentPhone && (currentPhone.includes(' ') || !currentPhone.startsWith('+'))) {
+              const cleanedPhone = normalizeIndianPhoneNumber(currentPhone);
+              if (cleanedPhone && cleanedPhone !== currentPhone) {
+                console.log('[Home] Normalizing legacy phone number in Firestore...');
+                await firestore().collection('users').doc(user.uid).update({
+                  phoneNumber: cleanedPhone
+                });
+              }
+            }
+
             const cacheKey = `profile_cache_${user.uid}`;
             await AsyncStorage.setItem(cacheKey, JSON.stringify({
               displayName: data?.displayName,
@@ -232,11 +256,11 @@ export default function HomeScreen() {
 
         {/* TABS */}
         <View style={[styles.tabBar, { backgroundColor: colors.headerBg }]}>
-          {(['Chats', 'Updates', 'Calls'] as const).map((tab) => (
+          {TABS.map((tab, index) => (
             <TouchableOpacity
               key={tab}
               style={styles.tabItem}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => handleTabPress(tab, index)}
             >
               <Text style={[
                 styles.tabText,
@@ -251,29 +275,50 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* LIST */}
-        {activeTab === 'Chats' ? (
-          <FlatList
-            data={CHATS}
-            keyExtractor={(item) => item.id}
-            renderItem={renderChatItem}
-            contentContainerStyle={styles.list}
-            showsVerticalScrollIndicator={false}
-          />
-        ) : (
-          <View style={styles.center}>
-            <Text style={{ color: colors.textSecondary }}>{activeTab} feature coming soon.</Text>
+        {/* LIST & PAGES */}
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) => {
+            const index = Math.round(e.nativeEvent.contentOffset.x / width);
+            setActiveTab(TABS[index]);
+          }}
+          style={{ flex: 1 }}
+        >
+          {/* CHATS TAB */}
+          <View style={{ width }}>
+            <FlatList
+              data={CHATS}
+              keyExtractor={(item) => item.id}
+              renderItem={renderChatItem}
+              contentContainerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
+            />
           </View>
-        )}
+
+          {/* UPDATES TAB */}
+          <View style={{ width }}>
+            <StatusScreen />
+          </View>
+
+          {/* CALLS TAB */}
+          <View style={[styles.center, { width }]}>
+            <Text style={{ color: colors.textSecondary }}>Calls feature coming soon.</Text>
+          </View>
+        </ScrollView>
 
         {/* FAB */}
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: colors.fabBg }]}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate('Contacts')}
-        >
-          <MaterialIcons name="chat" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
+        {activeTab === 'Chats' && (
+          <TouchableOpacity
+            style={[styles.fab, { backgroundColor: colors.fabBg }]}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('Contacts')}
+          >
+            <MaterialIcons name="chat" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
