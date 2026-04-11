@@ -25,6 +25,7 @@ import { initDB } from '../lib/database';
 import { syncContacts } from '../lib/contactSync';
 import { normalizeIndianPhoneNumber } from '../lib/phoneUtils';
 import StatusScreen from './StatusScreen';
+import CallsScreen from './CallsScreen';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -304,8 +305,8 @@ export default function HomeScreen() {
           </View>
 
           {/* CALLS TAB */}
-          <View style={[styles.center, { width }]}>
-            <Text style={{ color: colors.textSecondary }}>Calls feature coming soon.</Text>
+          <View style={{ width }}>
+            <CallsScreen />
           </View>
         </ScrollView>
 
@@ -317,6 +318,16 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('Contacts')}
           >
             <MaterialIcons name="chat" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        )}
+
+        {activeTab === 'Calls' && (
+          <TouchableOpacity
+            style={[styles.fab, { backgroundColor: colors.fabBg }]}
+            activeOpacity={0.8}
+            onPress={() => alert('New Call - Phase 3')}
+          >
+            <MaterialIcons name="add-call" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         )}
       </View>
