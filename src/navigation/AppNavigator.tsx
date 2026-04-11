@@ -10,6 +10,10 @@ import ProfileScreen from '../screens/ProfileScreen';
 import LoginScreen from '../screens/LoginScreen';
 import OtpScreen from '../screens/OtpScreen';
 import SetProfileScreen from '../screens/SetProfileScreen';
+import ContactsScreen from '../screens/ContactsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import MyStatusDetailsScreen from '../screens/MyStatusDetailsScreen';
+import StatusMediaEditor from '../screens/StatusMediaEditor';
 export type { NativeStackNavigationProp };
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -25,6 +29,10 @@ export default function AppNavigator() {
                             <Stack.Screen name="Home" component={HomeScreen} />
                             <Stack.Screen name="Chat" component={ChatScreen} />
                             <Stack.Screen name="Profile" component={ProfileScreen} />
+                            <Stack.Screen name="Contacts" component={ContactsScreen} />
+                            <Stack.Screen name="Settings" component={SettingsScreen} />
+                            <Stack.Screen name="MyStatusDetails" component={MyStatusDetailsScreen} />
+                            <Stack.Screen name="StatusMediaEditor" component={StatusMediaEditor} />
                         </>
                     ) : (
                         <Stack.Screen name="SetProfile" component={SetProfileScreen} />
