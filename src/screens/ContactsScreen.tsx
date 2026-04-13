@@ -22,8 +22,9 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types';
-import { fetchLocalContacts, LocalContact } from '../lib/database';
+import { fetchLocalContacts, fetchContactsByRegistration, LocalContact } from '../lib/database';
 import { auth, firestore } from '../lib/firebase';
+import { generateChatId } from '../lib/chatService';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Contacts'>;
 
@@ -102,14 +103,19 @@ export default function ContactsScreen() {
 
   const loadContacts = useCallback(async (query: string = '') => {
     try {
-      const allContacts = await fetchLocalContacts(query);
-      let registered = allContacts.filter(c => c.isRegistered === 1);
-      const invite = allContacts.filter(c => c.isRegistered === 0);
+      setLoading(true);
+      // Fetch separated by registration from SQLite directly
+      const [registered, invite] = await Promise.all([
+        fetchContactsByRegistration(1, query),
+        fetchContactsByRegistration(0, query)
+      ]);
 
       const currentUserNumber = auth().currentUser?.phoneNumber;
       const currentUserUid = auth().currentUser?.uid;
 
-      if (currentUserNumber) {
+      let finalRegistered = [...registered];
+
+      if (currentUserNumber && query.trim() === '') {
         let fallbackPhoto: string | undefined = auth().currentUser?.photoURL || undefined;
 
         // Fetch from firestore if missing in auth claims
@@ -124,8 +130,8 @@ export default function ContactsScreen() {
           }
         }
 
-        registered = registered.filter(c => c.normalizedPhone !== currentUserNumber);
-        registered.unshift({
+        finalRegistered = finalRegistered.filter(c => c.normalizedPhone !== currentUserNumber);
+        finalRegistered.unshift({
           id: 'current-user-self',
           name: 'You (Message yourself)',
           phoneNumber: currentUserNumber,
@@ -135,7 +141,7 @@ export default function ContactsScreen() {
         });
       }
 
-      setRegisteredContacts(registered);
+      setRegisteredContacts(finalRegistered);
       setInviteContacts(invite);
     } catch (error) {
       console.error('Failed to load contacts:', error);
@@ -145,9 +151,34 @@ export default function ContactsScreen() {
   }, []);
 
   useEffect(() => {
-    if (isFocused) {
+    const timer = setTimeout(() => {
       loadContacts(searchQuery);
-    }
+    }, 300); // 300ms debounce
+    return () => clearTimeout(timer);
+  }, [searchQuery, loadContacts]);
+
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+
+  const handleContactPress = useCallback((contact: LocalContact) => {
+    const myPhone = auth().currentUser?.phoneNumber;
+    if (!myPhone) return;
+
+    const deterministicChatId = generateChatId(myPhone, contact.normalizedPhone);
+
+    navigation.navigate('Chat', {
+      chatId: deterministicChatId,
+      recipientName: contact.name,
+      recipientPhone: contact.normalizedPhone,
+      recipientPhoto: contact.photoURL || contact.imageUri,
+      recipientUid: contact.uid
+    });
+  }, [navigation]);
+
+  // Handle background sync updates
+  useEffect(() => {
+    if (!isFocused) return;
 
     const syncListener = DeviceEventEmitter.addListener('contacts_synced', () => {
       loadContacts(searchQuery);
@@ -157,18 +188,6 @@ export default function ContactsScreen() {
       syncListener.remove();
     };
   }, [isFocused, searchQuery, loadContacts]);
-
-  const handleSearch = useCallback((query: string) => {
-    setSearchQuery(query);
-  }, []);
-
-  const handleContactPress = useCallback((contact: LocalContact) => {
-    navigation.navigate('Chat', {
-      chatId: contact.normalizedPhone, // use normalized phone as ID for Firestore
-      recipientName: contact.name,
-      recipientPhone: contact.normalizedPhone
-    });
-  }, [navigation]);
 
   const handleInvite = useCallback(async (contact: LocalContact) => {
     try {
@@ -306,6 +325,11 @@ export default function ContactsScreen() {
             renderSectionHeader={renderSectionHeader}
             stickySectionHeadersEnabled={false}
             contentContainerStyle={styles.listContent}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={Platform.OS === 'android'}
+            keyboardShouldPersistTaps="handled"
             ListEmptyComponent={
               <View style={styles.center}>
                 <Ionicons name="people-outline" size={64} color={colors.border} />

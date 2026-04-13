@@ -3,8 +3,10 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import { requestUserPermission, setupNotificationListeners } from './src/lib/notificationService';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/authStore';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function App() {
   const { setUser, setLoading, setHasProfile, loading, hasProfile, user } = useAuthStore();
@@ -16,7 +18,12 @@ export default function App() {
         // Check if this user already has a Firestore profile
         try {
           const doc = await firestore().collection('users').doc(firebaseUser.uid).get();
-          setHasProfile(doc.exists());
+          setHasProfile(doc.exists);
+          
+          if (doc.exists) {
+            // Already have a profile, safe to request and sync token
+            requestUserPermission();
+          }
         } catch {
           setHasProfile(false);
         }
@@ -30,6 +37,11 @@ export default function App() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    const unsubNotifications = setupNotificationListeners();
+    return () => unsubNotifications();
+  }, []);
+
   // Show spinner while Firebase checks existing login
   if (loading || (user && hasProfile === null)) {
     return (
@@ -40,10 +52,10 @@ export default function App() {
   }
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="dark" />
       <AppNavigator />
-    </>
+    </SafeAreaProvider>
   );
 }
 

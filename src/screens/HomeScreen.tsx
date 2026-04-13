@@ -24,6 +24,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initDB } from '../lib/database';
 import { syncContacts } from '../lib/contactSync';
 import { normalizeIndianPhoneNumber } from '../lib/phoneUtils';
+import { subscribeUserChats, fetchUserByPhone, markMessagesAsDelivered } from '../lib/chatService';
+import { formatStatusTime } from '../lib/timeUtils';
+import { getCachedImage } from '../lib/imageHandler';
 import StatusScreen from './StatusScreen';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -31,13 +34,8 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 const { width } = Dimensions.get('window');
 
 // Sample Data for UI
-const CHATS = [
-  { id: '1', name: 'Roshan Business', message: 'Hey, are we still on for the project?', time: '12:45 PM', unread: 2, avatar: 'https://i.pravatar.cc/150?u=1' },
-  { id: '2', name: 'Tech Team', message: 'New update pushed to main branch.', time: '11:20 AM', unread: 0, avatar: 'https://i.pravatar.cc/150?u=2' },
-  { id: '3', name: 'Sara Khan', message: 'The designs look great!', time: 'Yesterday', unread: 5, avatar: 'https://i.pravatar.cc/150?u=3' },
-  { id: '4', name: 'Deepak Dev', message: 'Fixed the auth bug.', time: 'Yesterday', unread: 0, avatar: 'https://i.pravatar.cc/150?u=4' },
-  { id: '5', name: 'Talkenly Community', message: 'Welcome to the group!', time: 'Monday', unread: 12, avatar: 'https://i.pravatar.cc/150?u=5' },
-];
+// Initial state for chats
+const CHATS_INITIAL: any[] = [];
 
 export default function HomeScreen() {
   const navigation = useNavigation<NavProp>();
@@ -47,6 +45,8 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'Chats' | 'Updates' | 'Calls'>('Chats');
   const [menuVisible, setMenuVisible] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [chats, setChats] = useState<any[]>(CHATS_INITIAL);
+  const [recipientCache, setRecipientCache] = useState<Record<string, any>>({});
 
   const TABS = ['Chats', 'Updates', 'Calls'] as const;
   const scrollViewRef = React.useRef<ScrollView>(null);
@@ -78,7 +78,7 @@ export default function HomeScreen() {
     // Initialize DB and Sync Contacts in background
     initDB();
     syncContacts();
-    
+
     // Preload user profile from Firestore into AsyncStorage
     const preloadProfile = async () => {
       const user = auth().currentUser;
@@ -87,7 +87,7 @@ export default function HomeScreen() {
           const doc = await firestore().collection('users').doc(user.uid).get();
           if (doc.exists()) {
             const data = doc.data();
-            
+
             // Self-healing: Normalize phone number in Firestore if needed
             const currentPhone = data?.phoneNumber;
             if (currentPhone && (currentPhone.includes(' ') || !currentPhone.startsWith('+'))) {
@@ -112,9 +112,61 @@ export default function HomeScreen() {
         }
       }
     };
-    
+
     preloadProfile();
   }, []);
+
+  // Real-time Chat Sync
+  useEffect(() => {
+    const user = auth().currentUser;
+    if (!user?.phoneNumber) return;
+
+    const unsubscribe = subscribeUserChats(user.phoneNumber, async (rawChats) => {
+      // For each chat, find the recipient Details
+      const resolvedChats = await Promise.all(rawChats.map(async (chat) => {
+        const otherPhone = chat.participants.find((p: string) => p !== user.phoneNumber);
+        if (!otherPhone) return null;
+
+        // Check cache first
+        let recipient = recipientCache[otherPhone];
+        if (!recipient) {
+          recipient = await fetchUserByPhone(otherPhone);
+          if (recipient) {
+            setRecipientCache(prev => ({ ...prev, [otherPhone]: recipient }));
+          }
+        }
+
+        // Resolve cache for the avatar
+        const avatarUrl = recipient?.photoURL || `https://i.pravatar.cc/150?u=${otherPhone}`;
+        const cachedAvatar = await getCachedImage(avatarUrl);
+
+        // Get unread count for current user
+        const mySafePhone = user.phoneNumber?.replace(/\+/g, '') || '';
+        const unreadCount = chat[`unreadCount_${mySafePhone}`] || 0;
+
+        return {
+          id: chat.id,
+          name: recipient?.displayName || otherPhone,
+          message: chat.lastMessage || 'No messages yet',
+          time: formatStatusTime(chat.lastTime),
+          unread: unreadCount,
+          avatar: cachedAvatar,
+          phone: otherPhone,
+          uid: recipient?.id || recipient?.uid // Handle both id and uid
+        };
+      }));
+
+      const filteredChats = resolvedChats.filter(c => c !== null);
+      setChats(filteredChats);
+
+      // Global Delivery Pickup: Mark incoming messages as 'delivered' for all active chats
+      rawChats.forEach((chat) => {
+        markMessagesAsDelivered(chat.id, user.phoneNumber || '');
+      });
+    });
+
+    return unsubscribe;
+  }, [recipientCache]);
 
   const handleLogout = async () => {
     try {
@@ -124,7 +176,7 @@ export default function HomeScreen() {
     }
   };
 
-  const renderChatItem = ({ item }: { item: typeof CHATS[0] }) => (
+  const renderChatItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       style={styles.chatItem}
       activeOpacity={0.7}
@@ -132,7 +184,9 @@ export default function HomeScreen() {
         navigation.navigate('Chat', {
           chatId: item.id,
           recipientName: item.name,
-          recipientPhone: '+91XXXXXXXXXX'
+          recipientPhone: item.phone,
+          recipientPhoto: item.avatar,
+          recipientUid: item.uid
         })
       }
     >
@@ -162,9 +216,9 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.headerBg }]}>
-      <StatusBar 
-        barStyle="light-content" 
-        backgroundColor={colors.statusBar} 
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={colors.statusBar}
         translucent={Platform.OS === 'android'}
       />
 
@@ -290,11 +344,19 @@ export default function HomeScreen() {
           {/* CHATS TAB */}
           <View style={{ width }}>
             <FlatList
-              data={CHATS}
+              data={chats}
               keyExtractor={(item) => item.id}
               renderItem={renderChatItem}
               contentContainerStyle={styles.list}
               showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="chatbubbles-outline" size={80} color={colors.border} />
+                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                    No chats yet.{'\n'}Tap the button below to start messaging.
+                  </Text>
+                </View>
+              }
             />
           </View>
 
@@ -466,4 +528,16 @@ const styles = StyleSheet.create({
   dialogActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 24 },
   dialogBtn: { marginLeft: 16, paddingHorizontal: 8, paddingVertical: 4 },
   dialogBtnText: { fontSize: 15, color: '#00A884', fontWeight: 'bold' },
+  emptyContainer: {
+    paddingTop: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 16,
+    lineHeight: 24,
+  },
 });
