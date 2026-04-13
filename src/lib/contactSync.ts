@@ -4,10 +4,18 @@ import { DeviceEventEmitter } from 'react-native';
 import { saveContactsBatch, getContactCount, updateRegistrationStatus, getDb } from './database';
 import { normalizeIndianPhoneNumber } from './phoneUtils';
 
+let isSyncing = false;
+
 /**
  * Synchronizes device contacts with local SQLite database and checks registration on Firestore.
  */
 export const syncContacts = async (force: boolean = false) => {
+  if (isSyncing) {
+    console.log('[Sync] Sync already in progress, skipping...');
+    return;
+  }
+
+  isSyncing = true;
   try {
     const { status } = await Contacts.requestPermissionsAsync();
     if (status !== 'granted') return;
@@ -44,6 +52,8 @@ export const syncContacts = async (force: boolean = false) => {
 
   } catch (error) {
     console.error('[Sync] Failed:', error);
+  } finally {
+    isSyncing = false;
   }
 };
 
@@ -66,29 +76,34 @@ export const checkFirestoreRegistration = async (normalizedPhones: string[]) => 
 
     const registeredPhones: string[] = [];
     const photoMap: Record<string, string> = {};
+    const uidMap: Record<string, string> = {};
 
-    const firestorePromises = chunks.map(chunk =>
-      firestore().collection('users').where('phoneNumber', 'in', chunk).get()
-    );
-
-    const snapshots = await Promise.all(firestorePromises);
-
-    snapshots.forEach(snapshot => {
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const phone = data.phoneNumber;
-        if (phone) {
-          registeredPhones.push(phone);
-          if (data.photoURL) {
-            photoMap[phone] = data.photoURL;
+    // Process chunks sequentially to avoid overwhelming the network
+    // and hitting Firestore rate limits for high contact counts
+    for (const chunk of chunks) {
+      try {
+        const snapshot = await firestore().collection('users').where('phoneNumber', 'in', chunk).get();
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const phone = data.phoneNumber;
+          if (phone) {
+            registeredPhones.push(phone);
+            uidMap[phone] = doc.id; // Correctly capture the UID
+            if (data.photoURL) {
+              photoMap[phone] = data.photoURL;
+            }
           }
-        }
-      });
-    });
+        });
+        // Small delay between chunks to let the UI thread breathe
+        await new Promise(resolve => setTimeout(resolve, 50));
+      } catch (chunkError) {
+        console.error('[Firestore] Chunk check failed:', chunkError);
+      }
+    }
 
-    // Update SQLite with registered status and Firestore photos
+    // Update SQLite with registered status, Firestore photos, and UIDs
     if (registeredPhones.length > 0) {
-      await updateRegistrationStatus(registeredPhones, photoMap);
+      await updateRegistrationStatus(registeredPhones, photoMap, uidMap);
     }
 
     console.log(`[Firestore] Found ${registeredPhones.length} registered users.`);

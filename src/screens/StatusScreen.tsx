@@ -157,11 +157,26 @@ export default function StatusScreen() {
     saveState();
   }, [myStatuses, myStatusUploaded]);
 
-  // Real-time Status Sync Logic
+  // Real-time Profile & Status Sync Logic
   const chunkStatusesRef = useRef<Record<number, any[]>>({});
 
   useEffect(() => {
-    let unsubscribes: (() => void)[] = [];
+    if (!currentUser) return;
+
+    // Listen to current user's profile changes
+    const unsubProfile = firestore()
+      .collection('users')
+      .doc(currentUser.uid)
+      .onSnapshot(doc => {
+        if (doc.exists) {
+          const data = doc.data();
+          if (data?.photoURL) {
+            setProfilePhoto(data.photoURL);
+          }
+        }
+      });
+
+    let unsubscribes: (() => void)[] = [unsubProfile];
 
     const setupStatusSync = async () => {
       // 1. Load registered contacts

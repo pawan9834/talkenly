@@ -13,20 +13,34 @@ import {
   TextInput,
   Platform,
   KeyboardAvoidingView,
+  ScrollView,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { Ionicons, Feather, MaterialIcons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useAuthStore } from '../store/authStore';
 import { auth, firestore, storage } from '../lib/firebase';
+import { getCachedImage } from '../lib/imageHandler';
+import { RootStackParamList } from '../types';
+
+const { width } = Dimensions.get('window');
+type ProfileRouteProp = RouteProp<RootStackParamList, 'Profile'>;
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
+  const route = useRoute<ProfileRouteProp>();
+  const params = route.params;
   const { user } = useAuthStore();
   const theme = useColorScheme() ?? 'light';
   const isDark = theme === 'dark';
+
+  // Determine if viewing my own profile
+  const isMe = !params?.userId || params?.userId === user?.uid;
+  const targetUid = params?.userId || user?.uid;
 
   const [loading, setLoading] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -51,28 +65,47 @@ export default function ProfileScreen() {
     accent: '#00A884',
     modalBg: isDark ? '#202C33' : '#FFFFFF',
     overlay: 'rgba(0,0,0,0.5)',
+    actionIcon: '#00A884',
+    divider: isDark ? '#222D34' : '#E9EDEF',
   }), [isDark]);
 
   useEffect(() => {
-    if (user) {
-      setPhone(user.phoneNumber || '');
-      // Fetch fresh profile from firestore
+    if (targetUid || params?.phone) {
       const fetchProfile = async () => {
+        setLoading(true);
         try {
-          const doc = await firestore().collection('users').doc(user.uid).get();
-          if (doc.exists()) {
+          let doc;
+          if (targetUid) {
+            doc = await firestore().collection('users').doc(targetUid).get();
+          } else if (params?.phone) {
+            const snapshot = await firestore()
+              .collection('users')
+              .where('phoneNumber', '==', params.phone)
+              .limit(1)
+              .get();
+            if (!snapshot.empty) doc = snapshot.docs[0];
+          }
+
+          if (doc && doc.exists()) {
             const data = doc.data();
             if (data?.displayName) setName(data.displayName);
-            if (data?.photoURL) setPhotoUri(data.photoURL);
             if (data?.about) setAbout(data.about);
+            if (data?.phoneNumber) setPhone(data.phoneNumber);
+            
+            if (data?.photoURL) {
+              const cached = await getCachedImage(data.photoURL);
+              setPhotoUri(cached);
+            }
           }
         } catch (e) {
           console.error(e);
+        } finally {
+          setLoading(false);
         }
       };
       fetchProfile();
     }
-  }, [user]);
+  }, [targetUid, params]);
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -89,9 +122,24 @@ export default function ProfileScreen() {
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      const uri = result.assets[0].uri;
-      setPhotoUri(uri);
-      uploadAndSaveImage(uri);
+      const originalUri = result.assets[0].uri;
+      
+      // OPTIMIZATION: Resize and compress before uploading
+      setLoading(true);
+      try {
+        const manipulated = await ImageManipulator.manipulateAsync(
+          originalUri,
+          [{ resize: { width: 1000 } }], // Resize to max 1000px width
+          { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        
+        setPhotoUri(manipulated.uri);
+        uploadAndSaveImage(manipulated.uri);
+      } catch (e) {
+        console.error('Image manipulation failed', e);
+        setPhotoUri(originalUri);
+        uploadAndSaveImage(originalUri);
+      }
     }
   };
 
@@ -102,14 +150,14 @@ export default function ProfileScreen() {
       const reference = storage().ref(`profilePictures/${user.uid}.jpg`);
       await reference.putFile(uri);
       const downloadURL = await reference.getDownloadURL();
-      
+
       await firestore().collection('users').doc(user.uid).update({
         photoURL: downloadURL,
       });
       // Optionally update auth cache
       try {
         await auth().currentUser?.updateProfile({ photoURL: downloadURL });
-      } catch (e) {}
+      } catch (e) { }
 
       // Update AsyncStorage Cache
       try {
@@ -118,8 +166,8 @@ export default function ProfileScreen() {
         const cachedObj = cachedStr ? JSON.parse(cachedStr) : {};
         cachedObj.photoURL = downloadURL;
         await AsyncStorage.setItem(cacheKey, JSON.stringify(cachedObj));
-      } catch (e) {}
-      
+      } catch (e) { }
+
     } catch (e: any) {
       Alert.alert('Error', 'Failed to update profile photo.');
     } finally {
@@ -142,7 +190,7 @@ export default function ProfileScreen() {
       setName(finalName);
       try {
         await auth().currentUser?.updateProfile({ displayName: finalName });
-      } catch (e) {}
+      } catch (e) { }
 
       // Update AsyncStorage Cache
       try {
@@ -151,8 +199,8 @@ export default function ProfileScreen() {
         const cachedObj = cachedStr ? JSON.parse(cachedStr) : {};
         cachedObj.displayName = finalName;
         await AsyncStorage.setItem(cacheKey, JSON.stringify(cachedObj));
-      } catch (e) {}
-      
+      } catch (e) { }
+
     } catch (e: any) {
       Alert.alert('Error', 'Failed to update name.');
     } finally {
@@ -181,108 +229,149 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.headerBg} />
-      
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
-      </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <View style={styles.content}>
-        {/* Avatar Section */}
-        <View style={styles.avatarContainer}>
-          <TouchableOpacity onPress={handlePickImage} disabled={loading}>
-            {photoUri ? (
-              <Image source={{ uri: photoUri }} style={styles.avatarImage} />
-            ) : (
-              <View style={[styles.avatarPlaceholder, { backgroundColor: colors.headerBg }]}>
-                <Ionicons name="person" size={70} color="#FFFFFF" />
-              </View>
-            )}
-            <View style={[styles.cameraBadge, { backgroundColor: colors.accent }]}>
-              <Ionicons name="camera" size={20} color="#FFFFFF" />
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.imageHeader}>
+          {photoUri ? (
+            <Image source={{ uri: photoUri }} style={styles.largeAvatar} />
+          ) : (
+            <View style={[styles.largeAvatarPlaceholder, { backgroundColor: colors.headerBg }]}>
+              <Ionicons name="person" size={120} color="#FFFFFF" />
             </View>
-            {loading && (
-              <View style={styles.loadingOverlay}>
-                <ActivityIndicator size="large" color="#FFFFFF" />
-              </View>
+          )}
+
+          {/* Overlay Buttons */}
+          <SafeAreaView style={styles.topFixedHeader}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconButton}>
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            {!isMe && (
+              <TouchableOpacity style={styles.headerIconButton}>
+                <Feather name="more-vertical" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+          </SafeAreaView>
+
+          {isMe && (
+            <TouchableOpacity
+              style={[styles.floatingEditBtn, { backgroundColor: colors.accent }]}
+              onPress={handlePickImage}
+              disabled={loading}
+            >
+              <Ionicons name="camera" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.nameHeaderContainer}>
+            <Text style={styles.largeNameText}>{name || '...'}</Text>
+            <Text style={styles.largePhoneText}>{phone}</Text>
+          </View>
         </View>
 
-        {/* Name Row */}
-        <TouchableOpacity style={[styles.infoRow, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]} onPress={() => { setTempName(name); setEditNameModal(true); }}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="person-outline" size={24} color={colors.icon} />
+        {/* Action Bar */}
+        {!isMe && (
+          <View style={[styles.actionBar, { backgroundColor: colors.cardBg }]}>
+            <TouchableOpacity style={styles.actionItem}>
+              <Ionicons name="chatbubble-ellipses" size={24} color={colors.accent} />
+              <Text style={[styles.actionLabel, { color: colors.accent }]}>Message</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionItem}>
+              <Ionicons name="call" size={24} color={colors.accent} />
+              <Text style={[styles.actionLabel, { color: colors.accent }]}>Audio</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionItem}>
+              <MaterialCommunityIcons name="video" size={28} color={colors.accent} />
+              <Text style={[styles.actionLabel, { color: colors.accent }]}>Video</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.textContainer}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Name</Text>
-            <Text style={[styles.value, { color: colors.textPrimary }]}>{name || '...'}</Text>
-            <Text style={[styles.hint, { color: colors.textSecondary }]}>
-              This is not your username or pin. This name will be visible to your Talkenly contacts.
-            </Text>
-          </View>
-          <Feather name="edit-2" size={20} color={colors.accent} />
-        </TouchableOpacity>
+        )}
 
-        {/* About Row */}
-        <TouchableOpacity style={[styles.infoRow, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]} onPress={() => { setTempAbout(about); setEditAboutModal(true); }}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="information-circle-outline" size={24} color={colors.icon} />
-          </View>
-          <View style={styles.textContainer}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>About</Text>
-            <Text style={[styles.value, { color: colors.textPrimary }]}>{about}</Text>
-          </View>
-          <Feather name="edit-2" size={20} color={colors.accent} />
-        </TouchableOpacity>
+        <View style={styles.detailsContent}>
+          {/* About & Phone Card */}
+          <View style={[styles.card, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
+            <TouchableOpacity
+              style={styles.cardItem}
+              onPress={() => { if (isMe) { setTempAbout(about); setEditAboutModal(true); } }}
+              activeOpacity={isMe ? 0.7 : 1}
+            >
+              <View style={styles.cardTextContainer}>
+                <Text style={[styles.cardValue, { color: colors.textPrimary }]}>{about}</Text>
+                <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>
+                  {isMe ? 'About' : 'Status'}
+                </Text>
+              </View>
+              {isMe && <Feather name="edit-2" size={18} color={colors.accent} />}
+            </TouchableOpacity>
 
-        {/* Phone Row */}
-        <View style={[styles.infoRow, { backgroundColor: colors.cardBg, borderBottomColor: colors.border }]}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="call-outline" size={24} color={colors.icon} />
-          </View>
-          <View style={styles.textContainer}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Phone</Text>
-            <Text style={[styles.value, { color: colors.textPrimary }]}>{phone}</Text>
-          </View>
-        </View>
-      </View>
+            <View style={[styles.cardDivider, { backgroundColor: colors.divider }]} />
 
-      {/* Edit Name Modal */}
-      <Modal visible={editNameModal} transparent animationType="fade" onRequestClose={() => setEditNameModal(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
-          <View style={[styles.modalBox, { backgroundColor: colors.modalBg }]}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Enter your name</Text>
-            <TextInput
-              style={[styles.modalInput, { color: colors.textPrimary, borderBottomColor: colors.accent }]}
-              value={tempName}
-              onChangeText={setTempName}
-              autoFocus
-              maxLength={25}
-              selectionColor={colors.accent}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalBtn} onPress={() => setEditNameModal(false)}>
-                <Text style={styles.modalBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalBtn} onPress={handleSaveName}>
-                <Text style={styles.modalBtnText}>Save</Text>
-              </TouchableOpacity>
+            <View style={styles.cardItem}>
+              <View style={styles.cardTextContainer}>
+                <Text style={[styles.cardValue, { color: colors.textPrimary }]}>{phone}</Text>
+                <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Phone Number</Text>
+              </View>
+              <View style={styles.phoneIconRow}>
+                <Ionicons name="call" size={20} color={colors.accent} style={{ marginRight: 20 }} />
+                <Ionicons name="chatbubble" size={20} color={colors.accent} />
+              </View>
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </Modal>
 
-      {/* Edit About Modal */}
+          {/* Media Section (Mock) */}
+          <View style={[styles.card, { backgroundColor: colors.cardBg, marginTop: 12 }]}>
+            <TouchableOpacity style={styles.cardItem}>
+              <MaterialIcons name="perm-media" size={22} color={colors.icon} />
+              <View style={[styles.cardTextContainer, { marginLeft: 16 }]}>
+                <Text style={[styles.cardValue, { fontSize: 16, color: colors.textPrimary }]}>Media, links, and docs</Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={{ color: colors.textSecondary, marginRight: 8 }}>0</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.icon} />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Groups (Mock) */}
+          <View style={[styles.card, { backgroundColor: colors.cardBg, marginTop: 12 }]}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Groups in common</Text>
+            <TouchableOpacity style={styles.cardItem}>
+              <View style={[styles.groupAvatar, { backgroundColor: colors.headerBg }]}>
+                <Ionicons name="people" size={24} color="#FFFFFF" />
+              </View>
+              <View style={[styles.cardTextContainer, { marginLeft: 16 }]}>
+                <Text style={[styles.cardValue, { fontSize: 16, color: colors.textPrimary }]}>Talkenly Devs</Text>
+                <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Pawan, Roshan, You</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Delete/Block Options */}
+          {!isMe && (
+            <View style={{ marginTop: 24, paddingBottom: 40 }}>
+              <TouchableOpacity style={styles.dangerItem}>
+                <Ionicons name="trash" size={24} color="#F44336" />
+                <Text style={styles.dangerText}>Delete Chat</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dangerItem}>
+                <Ionicons name="ban" size={24} color="#F44336" />
+                <Text style={styles.dangerText}>Block {name}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dangerItem}>
+                <Ionicons name="thumbs-down" size={24} color="#F44336" />
+                <Text style={styles.dangerText}>Report {name}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Modals for Editing (Simplified) */}
       <Modal visible={editAboutModal} transparent animationType="fade" onRequestClose={() => setEditAboutModal(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
           <View style={[styles.modalBox, { backgroundColor: colors.modalBg }]}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Add About</Text>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Edit About</Text>
             <TextInput
               style={[styles.modalInput, { color: colors.textPrimary, borderBottomColor: colors.accent }]}
               value={tempAbout}
@@ -302,67 +391,168 @@ export default function ProfileScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-      
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
+  imageHeader: {
+    width: width,
+    height: width * 0.9,
+    position: 'relative',
+    backgroundColor: '#000',
+  },
+  largeAvatar: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+    opacity: 0.8,
+  },
+  largeAvatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topFixedHeader: {
+    position: 'absolute',
+    top: -40,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingTop: Platform.OS === 'android' ? 40 : 10,
+    zIndex: 10,
+  },
+  headerIconButton: {
+    padding: 10,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 20,
+  },
+  floatingEditBtn: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    zIndex: 15,
+  },
+  nameHeaderContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    zIndex: 10,
+  },
+  largeNameText: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
+  },
+  largePhoneText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    opacity: 0.9,
+    marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 5,
+  },
+  actionBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 16,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+  },
+  actionItem: {
+    alignItems: 'center',
+    width: width / 4,
+  },
+  actionLabel: {
+    fontSize: 12,
+    marginTop: 6,
+    fontWeight: '500',
+  },
+  detailsContent: {
+    paddingTop: 12,
+  },
+  card: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+  },
+  cardItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    paddingVertical: 12,
   },
-  backBtn: { marginRight: 16 },
-  headerTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '500' },
-  content: { flex: 1 },
-  avatarContainer: {
-    alignItems: 'center',
-    paddingVertical: 32,
+  cardTextContainer: {
+    flex: 1,
   },
-  avatarImage: { width: 140, height: 140, borderRadius: 70 },
-  avatarPlaceholder: { width: 140, height: 140, borderRadius: 70, justifyContent: 'center', alignItems: 'center' },
-  cameraBadge: {
-    position: 'absolute',
-    bottom: 5,
-    right: 5,
+  cardValue: {
+    fontSize: 18,
+    marginBottom: 4,
+  },
+  cardLabel: {
+    fontSize: 14,
+  },
+  cardDivider: {
+    height: 1,
+    width: '100%',
+    marginLeft: 0,
+  },
+  phoneIconRow: {
+    flexDirection: 'row',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  groupAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
   },
-  loadingOverlay: {
-    position: 'absolute',
-    width: 140, height: 140, borderRadius: 70,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  infoRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
   },
-  iconContainer: { width: 40, alignItems: 'flex-start', marginTop: 4 },
-  textContainer: { flex: 1, paddingRight: 16 },
-  label: { fontSize: 14, marginBottom: 4 },
-  value: { fontSize: 16, fontWeight: '500', marginBottom: 4 },
-  hint: { fontSize: 13, marginTop: 4 },
+  dangerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  dangerText: {
+    color: '#F44336',
+    fontSize: 17,
+    marginLeft: 16,
+    fontWeight: '500',
+  },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalBox: { width: '85%', borderRadius: 8, padding: 24, elevation: 5 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 20 },

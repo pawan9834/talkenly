@@ -12,8 +12,8 @@ export type RootStackParamList = {
   };
   SetProfile: undefined;
   Home: undefined;
-  Chat: { chatId: string; recipientName: string; recipientPhone: string };
-  Profile: undefined;
+  Chat: { chatId: string; recipientName: string; recipientPhone: string; recipientPhoto?: string | null; recipientUid?: string };
+  Profile: { userId?: string; name?: string; photo?: string; phone?: string; about?: string } | undefined;
   Contacts: undefined;
   NewChat: undefined;
   Settings: undefined;

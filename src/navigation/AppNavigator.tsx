@@ -3,6 +3,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../store/authStore';
 import { RootStackParamList } from '../types';
+import { usePresence } from '../hooks/usePresence';
+import { populateEmojiDatabase } from '../lib/emojiService';
+import { useEffect } from 'react';
 
 import HomeScreen from '../screens/HomeScreen';
 import ChatScreen from '../screens/ChatScreen';
@@ -19,6 +22,14 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
     const { user, hasProfile } = useAuthStore();
+    
+    // Track presence globally for authenticated users
+    usePresence();
+
+    useEffect(() => {
+        // Initialize emoji database in the background
+        populateEmojiDatabase();
+    }, []);
 
     return (
         <NavigationContainer>

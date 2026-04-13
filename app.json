@@ -15,6 +15,7 @@
       "package": "com.pawankumar.talkenly",
       "googleServicesFile": "./google-services.json",
       "versionCode": 1,
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#075E54"
@@ -29,7 +30,8 @@
           "contactsPermission": "Allow Talkenly to access your contacts to start new chats."
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      "@react-native-firebase/messaging"
     ],
     "newArchEnabled": false,
     "extra": {
