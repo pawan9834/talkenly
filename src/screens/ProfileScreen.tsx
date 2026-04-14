@@ -26,6 +26,7 @@ import { useAuthStore } from '../store/authStore';
 import { auth, firestore, storage } from '../lib/firebase';
 import { getCachedImage } from '../lib/imageHandler';
 import { RootStackParamList } from '../types';
+import { deleteChat, generateChatId, blockUser, unblockUser } from '../lib/chatService';
 
 const { width } = Dimensions.get('window');
 type ProfileRouteProp = RouteProp<RootStackParamList, 'Profile'>;
@@ -47,6 +48,8 @@ export default function ProfileScreen() {
   const [name, setName] = useState<string>('');
   const [about, setAbout] = useState<string>('Hey there! I am using Talkenly.');
   const [phone, setPhone] = useState<string>('');
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [mediaCount, setMediaCount] = useState(0);
 
   const [editNameModal, setEditNameModal] = useState(false);
   const [tempName, setTempName] = useState('');
@@ -75,6 +78,8 @@ export default function ProfileScreen() {
         setLoading(true);
         try {
           let doc;
+          let phoneNumber = params?.phone;
+
           if (targetUid) {
             doc = await firestore().collection('users').doc(targetUid).get();
           } else if (params?.phone) {
@@ -90,12 +95,32 @@ export default function ProfileScreen() {
             const data = doc.data();
             if (data?.displayName) setName(data.displayName);
             if (data?.about) setAbout(data.about);
-            if (data?.phoneNumber) setPhone(data.phoneNumber);
-            
+            if (data?.phoneNumber) {
+              setPhone(data.phoneNumber);
+              phoneNumber = data.phoneNumber;
+            }
+
             if (data?.photoURL) {
               const cached = await getCachedImage(data.photoURL);
               setPhotoUri(cached);
             }
+          }
+
+          // 1. Fetch Block Status
+          if (!isMe && user?.uid && phoneNumber) {
+            const myDoc = await firestore().collection('users').doc(user.uid).get();
+            const blockedList = myDoc.data()?.blockedUsers || [];
+            setIsBlocked(blockedList.includes(phoneNumber));
+
+            // 2. Fetch Media Count for this chat
+            const chatId = generateChatId(user.phoneNumber as string, phoneNumber);
+            const mediaSnapshot = await firestore()
+              .collection('chats')
+              .doc(chatId)
+              .collection('messages')
+              .where('type', 'in', ['image', 'video'])
+              .get();
+            setMediaCount(mediaSnapshot.size);
           }
         } catch (e) {
           console.error(e);
@@ -123,7 +148,7 @@ export default function ProfileScreen() {
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const originalUri = result.assets[0].uri;
-      
+
       // OPTIMIZATION: Resize and compress before uploading
       setLoading(true);
       try {
@@ -132,7 +157,7 @@ export default function ProfileScreen() {
           [{ resize: { width: 1000 } }], // Resize to max 1000px width
           { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
         );
-        
+
         setPhotoUri(manipulated.uri);
         uploadAndSaveImage(manipulated.uri);
       } catch (e) {
@@ -228,6 +253,74 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleToggleBlock = async () => {
+    if (!phone) return;
+
+    const action = isBlocked ? 'unblock' : 'block';
+
+    Alert.alert(
+      `${isBlocked ? 'Unblock' : 'Block'} ${name}?`,
+      `Are you sure you want to ${action} this contact?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: isBlocked ? 'Unblock' : 'Block',
+          style: isBlocked ? 'default' : 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            const success = isBlocked ? await unblockUser(phone) : await blockUser(phone);
+            setLoading(false);
+            if (success) {
+              setIsBlocked(!isBlocked);
+            } else {
+              Alert.alert('Error', `Failed to ${action} user.`);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const navigateToMediaGallery = () => {
+    if (!user?.phoneNumber || !phone) return;
+    const chatId = generateChatId(user.phoneNumber, phone);
+    // @ts-ignore
+    navigation.navigate('MediaLinksDocs', {
+      chatId,
+      recipientName: name || phone,
+    });
+  };
+  const handleDeleteChat = () => {
+    if (!user?.phoneNumber || !phone) {
+      Alert.alert('Error', 'Could not identify chat session.');
+      return;
+    }
+
+    Alert.alert(
+      'Delete Chat?',
+      'Are you sure you want to permanently delete this entire chat and all its messages? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            const chatId = generateChatId(user.phoneNumber as string, phone);
+            const success = await deleteChat(chatId);
+            setLoading(false);
+            if (success) {
+              // Return to the previous screen (Home or Chat)
+              navigation.goBack();
+            } else {
+              Alert.alert('Error', 'Failed to delete chat.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -273,7 +366,7 @@ export default function ProfileScreen() {
         {/* Action Bar */}
         {!isMe && (
           <View style={[styles.actionBar, { backgroundColor: colors.cardBg }]}>
-            <TouchableOpacity style={styles.actionItem}>
+            <TouchableOpacity style={styles.actionItem} onPress={() => navigation.goBack()}>
               <Ionicons name="chatbubble-ellipses" size={24} color={colors.accent} />
               <Text style={[styles.actionLabel, { color: colors.accent }]}>Message</Text>
             </TouchableOpacity>
@@ -284,6 +377,10 @@ export default function ProfileScreen() {
             <TouchableOpacity style={styles.actionItem}>
               <MaterialCommunityIcons name="video" size={28} color={colors.accent} />
               <Text style={[styles.actionLabel, { color: colors.accent }]}>Video</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionItem} onPress={() => Alert.alert('Coming Soon', 'User status viewing is coming soon!')}>
+              <Ionicons name="radio-outline" size={24} color={colors.accent} />
+              <Text style={[styles.actionLabel, { color: colors.accent }]}>Status</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -319,15 +416,15 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Media Section (Mock) */}
+          {/* Media Section */}
           <View style={[styles.card, { backgroundColor: colors.cardBg, marginTop: 12 }]}>
-            <TouchableOpacity style={styles.cardItem}>
+            <TouchableOpacity style={styles.cardItem} onPress={navigateToMediaGallery}>
               <MaterialIcons name="perm-media" size={22} color={colors.icon} />
               <View style={[styles.cardTextContainer, { marginLeft: 16 }]}>
                 <Text style={[styles.cardValue, { fontSize: 16, color: colors.textPrimary }]}>Media, links, and docs</Text>
               </View>
               <View style={styles.row}>
-                <Text style={{ color: colors.textSecondary, marginRight: 8 }}>0</Text>
+                <Text style={{ color: colors.textSecondary, marginRight: 8 }}>{mediaCount}</Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.icon} />
               </View>
             </TouchableOpacity>
@@ -350,13 +447,13 @@ export default function ProfileScreen() {
           {/* Delete/Block Options */}
           {!isMe && (
             <View style={{ marginTop: 24, paddingBottom: 40 }}>
-              <TouchableOpacity style={styles.dangerItem}>
+              <TouchableOpacity style={styles.dangerItem} onPress={handleDeleteChat}>
                 <Ionicons name="trash" size={24} color="#F44336" />
                 <Text style={styles.dangerText}>Delete Chat</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.dangerItem}>
+              <TouchableOpacity style={styles.dangerItem} onPress={handleToggleBlock}>
                 <Ionicons name="ban" size={24} color="#F44336" />
-                <Text style={styles.dangerText}>Block {name}</Text>
+                <Text style={styles.dangerText}>{isBlocked ? `Unblock ${name}` : `Block ${name}`}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dangerItem}>
                 <Ionicons name="thumbs-down" size={24} color="#F44336" />

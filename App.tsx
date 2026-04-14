@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import { requestUserPermission, setupNotificationListeners } from './src/lib/notificationService';
+import { initLocationService } from './src/lib/locationService';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/authStore';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -40,6 +41,11 @@ export default function App() {
   useEffect(() => {
     const unsubNotifications = setupNotificationListeners();
     return () => unsubNotifications();
+  }, []);
+
+  useEffect(() => {
+    // Request location permission early so it's ready when user opens chat
+    initLocationService();
   }, []);
 
   // Show spinner while Firebase checks existing login

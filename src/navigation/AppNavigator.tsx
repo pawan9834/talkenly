@@ -17,6 +17,10 @@ import ContactsScreen from '../screens/ContactsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import MyStatusDetailsScreen from '../screens/MyStatusDetailsScreen';
 import StatusMediaEditor from '../screens/StatusMediaEditor';
+import BlockedContactsScreen from '../screens/BlockedContactsScreen';
+import MediaLinksDocsScreen from '../screens/MediaLinksDocsScreen';
+import StarredMessagesScreen from '../screens/StarredMessagesScreen';
+import ImageViewerScreen from '../screens/ImageViewerScreen';
 export type { NativeStackNavigationProp };
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -44,6 +48,10 @@ export default function AppNavigator() {
                             <Stack.Screen name="Settings" component={SettingsScreen} />
                             <Stack.Screen name="MyStatusDetails" component={MyStatusDetailsScreen} />
                             <Stack.Screen name="StatusMediaEditor" component={StatusMediaEditor} />
+                            <Stack.Screen name="BlockedContacts" component={BlockedContactsScreen} />
+                            <Stack.Screen name="MediaLinksDocs" component={MediaLinksDocsScreen} />
+                            <Stack.Screen name="StarredMessages" component={StarredMessagesScreen} />
+                            <Stack.Screen name="ImageViewer" component={ImageViewerScreen} />
                         </>
                     ) : (
                         <Stack.Screen name="SetProfile" component={SetProfileScreen} />

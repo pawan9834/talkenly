@@ -27,6 +27,7 @@ import { normalizeIndianPhoneNumber } from '../lib/phoneUtils';
 import { subscribeUserChats, fetchUserByPhone, markMessagesAsDelivered } from '../lib/chatService';
 import { formatStatusTime } from '../lib/timeUtils';
 import { getCachedImage } from '../lib/imageHandler';
+import StatusRing from '../components/chat/StatusRing';
 import StatusScreen from './StatusScreen';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -47,6 +48,8 @@ export default function HomeScreen() {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [chats, setChats] = useState<any[]>(CHATS_INITIAL);
   const [recipientCache, setRecipientCache] = useState<Record<string, any>>({});
+  const [userStatuses, setUserStatuses] = useState<Record<string, any>>({});
+  const [viewedStatusIds, setViewedStatusIds] = useState<Set<string>>(new Set());
 
   const TABS = ['Chats', 'Updates', 'Calls'] as const;
   const scrollViewRef = React.useRef<ScrollView>(null);
@@ -168,6 +171,71 @@ export default function HomeScreen() {
     return unsubscribe;
   }, [recipientCache]);
 
+  // Real-time Status Sync for Home Screen
+  useEffect(() => {
+    const user = auth().currentUser;
+    if (!user || chats.length === 0) return;
+
+    // 1. Listen to Viewed Statuses
+    const unsubViewed = firestore()
+      .collection('status_views')
+      .where('viewerUid', '==', user.uid)
+      .onSnapshot(snap => {
+        if (!snap) return;
+        const ids = new Set(snap.docs.map(doc => (doc.data() as any).statusId));
+        setViewedStatusIds(ids);
+      });
+
+    // 2. Listen to Statuses for all contacts in chat list
+    const phones = chats.map(c => c.phone).filter(Boolean);
+    if (phones.length === 0) return unsubViewed;
+
+    const unsubscribes: (() => void)[] = [unsubViewed];
+    const chunks = [];
+    for (let i = 0; i < phones.length; i += 30) {
+      chunks.push(phones.slice(i, i + 30));
+    }
+
+    const oneDayMillis = 24 * 60 * 60 * 1000;
+    const chunkResults: Record<number, any> = {};
+
+    chunks.forEach((chunk, index) => {
+      const unsub = firestore()
+        .collection('statuses')
+        .where('phoneNumber', 'in', chunk)
+        .onSnapshot(snapshot => {
+          if (!snapshot) return;
+          const now = Date.now();
+          const docs = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() as any }))
+            .filter(doc => !doc.createdAt || (now - doc.createdAt.toMillis()) < oneDayMillis);
+
+          // Group by phone
+          const groupedByPhone = docs.reduce((acc: any, status: any) => {
+            const phone = status.phoneNumber;
+            if (!acc[phone]) acc[phone] = [];
+            acc[phone].push(status);
+            return acc;
+          }, {});
+
+          chunkResults[index] = groupedByPhone;
+
+          // Merge all chunks
+          const merged: Record<string, any[]> = {};
+          Object.values(chunkResults).forEach((res: any) => {
+            Object.keys(res).forEach(phone => {
+              if (!merged[phone]) merged[phone] = [];
+              merged[phone] = [...merged[phone], ...res[phone]];
+            });
+          });
+          setUserStatuses(merged);
+        });
+      unsubscribes.push(unsub);
+    });
+
+    return () => unsubscribes.forEach(un => un());
+  }, [chats.map(c => c.id).join(','), chats.length]); // Use chatId string as key for re-running
+
   const handleLogout = async () => {
     try {
       await auth().signOut();
@@ -176,43 +244,89 @@ export default function HomeScreen() {
     }
   };
 
-  const renderChatItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.chatItem}
-      activeOpacity={0.7}
-      onPress={() =>
-        navigation.navigate('Chat', {
-          chatId: item.id,
-          recipientName: item.name,
-          recipientPhone: item.phone,
-          recipientPhoto: item.avatar,
-          recipientUid: item.uid
-        })
-      }
-    >
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
-      <View style={[styles.chatInfo, { borderBottomColor: colors.border }]}>
-        <View style={styles.chatTopRow}>
-          <Text style={[styles.chatName, { color: colors.textPrimary }]} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <Text style={[styles.chatTime, { color: item.unread > 0 ? colors.unreadBadge : colors.textSecondary }]}>
-            {item.time}
-          </Text>
+  const renderChatItem = ({ item }: { item: any }) => {
+    const stories = userStatuses[item.phone] || [];
+    const hasStatus = stories.length > 0;
+
+    return (
+      <TouchableOpacity
+        style={styles.chatItem}
+        activeOpacity={0.7}
+        onPress={() =>
+          navigation.navigate('Chat', {
+            chatId: item.id,
+            recipientName: item.name,
+            recipientPhone: item.phone,
+            recipientPhoto: item.avatar,
+            recipientUid: item.uid
+          })
+        }
+      >
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => {
+            if (hasStatus) {
+              // Open Status Viewer (handled in Progress StatusScreen or directly)
+              // For now, let's navigate to the "Updates" tab and highlight this user if possible
+              // But the request says "same as update screen" so I should ideally open the viewer.
+              // We'll navigate to Chat if no stories, but if stories, we go to Updates.
+              setActiveTab('Updates');
+              scrollViewRef.current?.scrollTo({ x: width, animated: true });
+            } else {
+              // Open Profile Photo Viewer or Chat
+              navigation.navigate('Chat', {
+                chatId: item.id,
+                recipientName: item.name,
+                recipientPhone: item.phone,
+                recipientPhoto: item.avatar,
+                recipientUid: item.uid
+              });
+            }
+          }}
+          disabled={!hasStatus} // If no status, tapping avatar does nothing special (opens chat via row)
+        >
+          <View style={styles.avatarWrapper}>
+            {hasStatus && (
+              <View style={styles.statusRingOverlay}>
+                <StatusRing
+                  stories={stories}
+                  viewedStatusIds={viewedStatusIds}
+                  size={58}
+                  strokeWidth={2}
+                  colors={{
+                    primary: colors.unreadBadge,
+                    border: colors.textSecondary + '66'
+                  }}
+                />
+              </View>
+            )}
+            <Image source={{ uri: item.avatar }} style={styles.avatar} />
+          </View>
+        </TouchableOpacity>
+
+        <View style={[styles.chatInfo, { borderBottomColor: colors.border }]}>
+          <View style={styles.chatTopRow}>
+            <Text style={[styles.chatName, { color: colors.textPrimary }]} numberOfLines={1}>
+              {item.name}
+            </Text>
+            <Text style={[styles.chatTime, { color: item.unread > 0 ? colors.unreadBadge : colors.textSecondary }]}>
+              {item.time}
+            </Text>
+          </View>
+          <View style={styles.chatBottomRow}>
+            <Text style={[styles.chatMsg, { color: colors.textSecondary }]} numberOfLines={1}>
+              {item.message}
+            </Text>
+            {item.unread > 0 && (
+              <View style={[styles.unreadBadge, { backgroundColor: colors.unreadBadge }]}>
+                <Text style={styles.unreadText}>{item.unread}</Text>
+              </View>
+            )}
+          </View>
         </View>
-        <View style={styles.chatBottomRow}>
-          <Text style={[styles.chatMsg, { color: colors.textSecondary }]} numberOfLines={1}>
-            {item.message}
-          </Text>
-          {item.unread > 0 && (
-            <View style={[styles.unreadBadge, { backgroundColor: colors.unreadBadge }]}>
-              <Text style={styles.unreadText}>{item.unread}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.headerBg }]}>
@@ -256,7 +370,7 @@ export default function HomeScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.dropdownItem} onPress={() => {
                   setMenuVisible(false);
-                  alert('Starred messages - Phase 3');
+                  navigation.navigate('StarredMessages');
                 }}>
                   <Text style={[styles.dropdownText, { color: colors.textPrimary }]}>Starred messages</Text>
                 </TouchableOpacity>
@@ -446,6 +560,16 @@ const styles = StyleSheet.create({
     paddingLeft: 16,
     height: 76,
     alignItems: 'center',
+  },
+  avatarWrapper: {
+    width: 58,
+    height: 58,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusRingOverlay: {
+    position: 'absolute',
+    zIndex: 1,
   },
   avatar: {
     width: 52,

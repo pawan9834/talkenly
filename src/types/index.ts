@@ -17,8 +17,16 @@ export type RootStackParamList = {
   Contacts: undefined;
   NewChat: undefined;
   Settings: undefined;
+  BlockedContacts: undefined;
+  MediaLinksDocs: { chatId: string; recipientName: string };
   MyStatusDetails: undefined;
   StatusMediaEditor: { asset: any };
+  StarredMessages: undefined;
+  ImageViewer: {
+    mediaMessages: any[]; // Or a more specific type if possible
+    initialIndex: number;
+    recipientName: string;
+  };
 };
 
 // ─── Firestore Data Models ────────────────────────────────────────────────────
@@ -38,8 +46,10 @@ export interface Message {
   text: string;
   senderId: string;
   createdAt: number;
-  type: 'text' | 'image' | 'audio';
+  type: 'text' | 'image' | 'audio' | 'video' | 'location' | 'contact' | 'liveLocation' | 'deleted';
   mediaUrl?: string;
+  mediaType?: 'image' | 'video';
+  duration?: number | null;
   status: 'sent' | 'delivered' | 'read';
 }
 

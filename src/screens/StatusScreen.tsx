@@ -465,14 +465,14 @@ export default function StatusScreen() {
     setUploadOptionsVisible(false);
     const asset = await pickStatusMedia(useCamera);
     if (asset) {
-       // Navigate to Editor instead of uploading immediately
-       (navigation as any).navigate('StatusMediaEditor', { asset });
+      // Navigate to Editor instead of uploading immediately
+      (navigation as any).navigate('StatusMediaEditor', { asset });
     }
   };
 
   const handleMediaPick = async (asset: MediaLibrary.Asset) => {
     setUploadOptionsVisible(false);
-    
+
     // Convert MediaLibrary asset to a compatible format for the Editor/Uploader
     const pickedAsset: any = {
       uri: asset.uri,
@@ -480,7 +480,7 @@ export default function StatusScreen() {
       id: asset.id,
       duration: asset.duration
     };
-    
+
     (navigation as any).navigate('StatusMediaEditor', { asset: pickedAsset });
   };
 
@@ -600,9 +600,9 @@ export default function StatusScreen() {
           <View style={myStatusUploaded ? styles.avatarContainer : styles.myAvatarContainer}>
             {myStatusUploaded && (
               <View style={StyleSheet.absoluteFill}>
-                <StatusRing 
-                  stories={myStatuses} 
-                  viewedStatusIds={myViewedStatusIds} 
+                <StatusRing
+                  stories={myStatuses}
+                  viewedStatusIds={myViewedStatusIds}
                   colors={colors}
                 />
               </View>
