@@ -1,7 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Ionicons, MaterialCommunityIcons, Feather, FontAwesome5 } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, TouchableWithoutFeedback, Alert, Platform } from 'react-native';
+import { Ionicons, MaterialCommunityIcons, Feather, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { deleteChat, blockUser } from '../../lib/chatService';
 
 interface ChatHeaderProps {
   navigation: any;
@@ -11,23 +12,95 @@ interface ChatHeaderProps {
   recipientPhone?: string;
   isOnline: boolean;
   isTyping: boolean;
+  chatId: string;
+  onClearChat?: () => void;
+  onBlock?: () => void;
+  onMediaLinksDocs?: () => void;
   colors: {
     headerBg: string;
+    cardBg: string;
+    textPrimary: string;
+    divider: string;
   };
   onDiagnostics?: () => void;
 }
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ 
-  navigation, 
-  recipientName, 
-  recipientPhoto, 
+const ChatHeader: React.FC<ChatHeaderProps> = ({
+  navigation,
+  recipientName,
+  recipientPhoto,
   recipientUid,
   recipientPhone,
   isOnline,
   isTyping,
+  chatId,
+  onClearChat,
+  onBlock,
+  onMediaLinksDocs,
   colors,
   onDiagnostics
 }) => {
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const handleOption = (label: string) => {
+    setMenuVisible(false);
+
+    if (label === 'Clear chat') {
+      Alert.alert(
+        'Delete Chat?',
+        'Are you sure you want to permanently delete this entire chat and all its messages? This cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              if (chatId) {
+                await deleteChat(chatId);
+                onClearChat?.();
+              }
+            }
+          }
+        ]
+      );
+    } else if (label === 'Block') {
+      Alert.alert(
+        'Block Contact?',
+        `Are you sure you want to block ${recipientPhone}? They will no longer be able to send you messages.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Block',
+            style: 'destructive',
+            onPress: async () => {
+              if (recipientPhone) {
+                const success = await blockUser(recipientPhone);
+                if (success) {
+                  onBlock?.();
+                } else {
+                  Alert.alert('Error', 'Failed to block user. Please try again.');
+                }
+              }
+            }
+          }
+        ]
+      );
+    } else if (label === 'Media, links, and docs') {
+      onMediaLinksDocs?.();
+    } else {
+      Alert.alert(label, `The ${label} feature is coming soon!`);
+    }
+  };
+
+  const menuItems = [
+    { label: 'Search', icon: 'search-outline', lib: Ionicons },
+    { label: 'Mute notifications', icon: 'notifications-off-outline', lib: Ionicons },
+    { label: 'Clear chat', icon: 'mop', lib: MaterialCommunityIcons },
+    { label: 'Media, links, and docs', icon: 'perm-media', lib: MaterialIcons },
+    { label: 'Block', icon: 'ban', lib: Ionicons },
+    { label: 'Report', icon: 'thumbs-down-outline', lib: Ionicons },
+  ];
+
   return (
     <View style={{ backgroundColor: colors.headerBg }}>
       <SafeAreaView
@@ -69,22 +142,45 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           </View>
 
           <View style={styles.headerRight}>
-            {onDiagnostics && (
-              <TouchableOpacity style={styles.headerIcon} onPress={onDiagnostics}>
-                <Ionicons name="bug-outline" size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
             <TouchableOpacity style={styles.headerIcon}>
               <MaterialCommunityIcons name="video" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerIcon}>
               <Ionicons name="call" size={20} color="#FFFFFF" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon}>
+            <TouchableOpacity
+              style={styles.headerIcon}
+              onPress={() => setMenuVisible(true)}
+            >
               <Feather name="more-vertical" size={22} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Dropdown Menu Modal */}
+        <Modal
+          visible={menuVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setMenuVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
+            <View style={styles.modalOverlay}>
+              <View style={[styles.menuContainer, { backgroundColor: colors.cardBg ?? (colors.headerBg === '#202C33' ? '#202C33' : '#FFFFFF') }]}>
+                {menuItems.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.menuItem}
+                    onPress={() => handleOption(item.label)}
+                  >
+                    <item.lib name={item.icon as any} size={20} color={colors.textPrimary} style={{ marginRight: 12 }} />
+                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>{item.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -152,5 +248,32 @@ const styles = StyleSheet.create({
   },
   headerIcon: {
     padding: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  menuContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 100 : 50,
+    right: 15,
+    minWidth: 200,
+    borderRadius: 8,
+    paddingVertical: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    zIndex: 1000,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  menuText: {
+    fontSize: 15,
   },
 });

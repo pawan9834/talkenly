@@ -39,6 +39,7 @@ export default function SettingsScreen() {
     textSecondary: isDark ? '#8696A0' : '#667781',
     border: isDark ? '#222D34' : '#E9EDEF',
     icon: '#8696A0',
+    accent: '#00A884',
   }), [isDark]);
 
   React.useEffect(() => {
@@ -52,7 +53,7 @@ export default function SettingsScreen() {
         try {
           const cacheKey = `profile_cache_${user.uid}`;
           const cachedJson = await AsyncStorage.getItem(cacheKey);
-          
+
           if (cachedJson) {
             // Load from Cache Fast
             const cached = JSON.parse(cachedJson);
@@ -67,18 +68,18 @@ export default function SettingsScreen() {
             const data = doc.data();
             if (data?.displayName) setUserName(data.displayName);
             if (data?.photoURL) setPhoto(data.photoURL);
-            
+
             // Save to Cache for next time
-            await AsyncStorage.setItem(cacheKey, JSON.stringify({ 
-              displayName: data?.displayName, 
-              photoURL: data?.photoURL 
+            await AsyncStorage.setItem(cacheKey, JSON.stringify({
+              displayName: data?.displayName,
+              photoURL: data?.photoURL
             }));
           }
         } catch (e) {
           console.warn(e);
         }
       };
-      
+
       fetchProfileCached();
     }
   }, [user]);
@@ -133,7 +134,7 @@ export default function SettingsScreen() {
         {/* Setting Groups */}
         <View style={[styles.settingsGroup, { backgroundColor: colors.cardBg, borderTopColor: colors.border, borderBottomColor: colors.border, borderTopWidth: 1, borderBottomWidth: 1 }]}>
           {renderSettingItem('key-outline', 'Ionicons', 'Account', 'Security notifications, change number')}
-          {renderSettingItem('lock-closed-outline', 'Ionicons', 'Privacy', 'Block contacts, disappearing messages')}
+          {renderSettingItem('lock-closed-outline', 'Ionicons', 'Blocked Contacts', 'Block contacts', () => navigation.navigate('BlockedContacts'))}
           {renderSettingItem('face-man-profile', 'MaterialIcons', 'Avatar', 'Create, edit, profile photo')}
           {renderSettingItem('chatbox-outline', 'Ionicons', 'Chats', 'Theme, wallpapers, chat history')}
         </View>
