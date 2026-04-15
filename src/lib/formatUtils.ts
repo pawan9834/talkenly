@@ -1,0 +1,19 @@
+/**
+ * Formats a size in bytes to a human-readable string (KB, MB, GB).
+ * 
+ * @param bytes Number of bytes to format
+ * @param decimalPoint Number of decimal points to show
+ * @returns Formatted string
+ */
+export const formatFileSize = (bytes: number, decimalPoint: number = 2): string => {
+   if (bytes === 0) return '0 Bytes';
+   if (!bytes) return '';
+   
+   const k = 1024;
+   const dm = decimalPoint < 0 ? 0 : decimalPoint;
+   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+   
+   const i = Math.floor(Math.log(bytes) / Math.log(k));
+   
+   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+};

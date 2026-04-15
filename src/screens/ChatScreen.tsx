@@ -44,6 +44,7 @@ export default function ChatScreen() {
     isOnline: false,
     isTyping: false
   });
+  const [resolvedRecipientUid, setResolvedRecipientUid] = useState<string | null>(recipientUid || null);
   const [activeUploads, setActiveUploads] = useState<Record<string, {
     progress: number;
     task: any;
@@ -72,6 +73,7 @@ export default function ChatScreen() {
           if (!snapshot.empty) {
             targetUid = snapshot.docs[0].id;
             console.log(`[Status] Resolved UID from phone: ${targetUid}`);
+            setResolvedRecipientUid(targetUid);
 
             // Self-healing: Cache this UID locally
             try {
@@ -162,6 +164,8 @@ export default function ChatScreen() {
         isStarred: msg.starredBy?.includes(myPhone || '') || false,
         mediaUrl: msg.mediaUrl,
         mediaType: msg.mediaType,
+        fileSize: msg.fileSize,
+        fileName: msg.fileName,
         duration: msg.duration,
       }));
       setMessages(mappedMessages);
@@ -182,7 +186,7 @@ export default function ChatScreen() {
     if (uploadAsset) {
       // HANDLE BACKGROUND MEDIA UPLOAD
       const tempId = `temp-${Date.now()}`;
-      const { task, reference } = startMediaUploadTask(chatId, uploadAsset);
+      const { task, reference, fullFilename } = startMediaUploadTask(chatId, uploadAsset);
 
       // 1. Create optimistic local message
       const optimisticMsg: ChatMessageUI = {
@@ -194,6 +198,8 @@ export default function ChatScreen() {
         type: uploadAsset.type === 'video' ? 'video' : 'image',
         mediaUrl: uploadAsset.uri, // Use local URI for now
         mediaType: uploadAsset.type === 'video' ? 'video' : 'image',
+        fileSize: uploadAsset.fileSize || 0,
+        fileName: uploadAsset.fileName || `${Date.now()}.${uploadAsset.type === 'video' ? 'mp4' : 'jpg'}`,
       };
 
       setMessages(prev => [...prev, optimisticMsg]);
@@ -230,6 +236,8 @@ export default function ChatScreen() {
              mediaType: uploadAsset.type === 'video' ? 'video' : 'image',
              text: text || undefined,
              duration: uploadAsset.duration,
+             fileSize: uploadAsset.fileSize || 0,
+             fileName: fullFilename,
           });
 
           const replyData = replyTo ? {
@@ -421,7 +429,7 @@ export default function ChatScreen() {
           chatId={chatId}
           recipientName={recipientName}
           recipientPhoto={cachedRecipientPhoto}
-          recipientUid={recipientUid}
+          recipientUid={resolvedRecipientUid || recipientUid}
           recipientPhone={recipientPhone}
           isOnline={recipientStatus.isTyping ? false : recipientStatus.isOnline}
           isTyping={recipientStatus.isTyping}

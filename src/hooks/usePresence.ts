@@ -3,13 +3,17 @@ import { AppState, AppStateStatus } from 'react-native';
 import { auth, firestore } from '../lib/firebase';
 
 /**
- * Hook to manage user presence (online/offline status) in Firestore
+ * Hook to manage user presence (online/offline status) in Firestore.
+ * IMPORTANT: `hasProfile` must be true before this writes anything,
+ * otherwise it would create a Firestore doc for brand-new users and
+ * bypass the SetProfile screen.
  */
-export const usePresence = () => {
+export const usePresence = (hasProfile: boolean | null = null) => {
   const currentUser = auth().currentUser;
 
   useEffect(() => {
-    if (!currentUser) return;
+    // Only track presence for users who have completed profile setup
+    if (!currentUser || hasProfile !== true) return;
 
     const userRef = firestore().collection('users').doc(currentUser.uid);
 
@@ -25,7 +29,7 @@ export const usePresence = () => {
       }
     };
 
-    // Set online immediately on mount or login
+    // Set online immediately on mount or when profile is confirmed
     updateStatus(true);
 
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
@@ -43,5 +47,5 @@ export const usePresence = () => {
       // Attempt to set offline when logging out or closing
       updateStatus(false);
     };
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, hasProfile]);
 };

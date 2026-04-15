@@ -17,6 +17,7 @@ export type RootStackParamList = {
   Contacts: undefined;
   NewChat: undefined;
   Settings: undefined;
+  AccountSettings: undefined;
   BlockedContacts: undefined;
   MediaLinksDocs: { chatId: string; recipientName: string };
   MyStatusDetails: undefined;
@@ -27,6 +28,8 @@ export type RootStackParamList = {
     initialIndex: number;
     recipientName: string;
   };
+  ZegoUIKitPrebuiltCallWaitingScreen: any;
+  ZegoUIKitPrebuiltCallInCallScreen: any;
 };
 
 // ─── Firestore Data Models ────────────────────────────────────────────────────
@@ -49,6 +52,8 @@ export interface Message {
   type: 'text' | 'image' | 'audio' | 'video' | 'location' | 'contact' | 'liveLocation' | 'deleted';
   mediaUrl?: string;
   mediaType?: 'image' | 'video';
+  fileSize?: number;
+  fileName?: string;
   duration?: number | null;
   status: 'sent' | 'delivered' | 'read';
 }

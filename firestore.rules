@@ -1,0 +1,58 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check participation
+    function isParticipant(chatId) {
+      let path = /databases/$(database)/documents/chats/$(chatId);
+      return request.auth != null && 
+             exists(path) && 
+             request.auth.token.phone_number in get(path).data.participants;
+    }
+
+    // ---------------- USERS ----------------
+    match /users/{userId} {
+      // Explicitly allow both single doc reads and collection queries
+      allow get, list: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      // Allow deletion for account cleanup
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ✅ OPTIMIZED STARRED MESSAGES RULE
+    // This allows the search because the query already filters for your phone number
+    match /{path=**}/messages/{messageId} {
+      allow read: if request.auth != null && 
+                  (request.auth.token.phone_number in resource.data.starredBy || isParticipant(path[1]));
+      // Allow deletion for account cleanup
+      allow delete: if request.auth != null && isParticipant(path[1]);
+    }
+
+    // ---------------- CHATS ----------------
+    match /chats/{chatId} {
+      allow read: if request.auth != null && (
+        !exists(resource) || request.auth.token.phone_number in resource.data.participants
+      );
+      
+      allow update, delete: if request.auth != null && request.auth.token.phone_number in resource.data.participants;
+      
+      allow create: if request.auth != null &&
+        request.resource.data.participants is list &&
+        request.auth.token.phone_number in request.resource.data.participants;
+
+      // ---------------- MESSAGES & TYPING ----------------
+      match /{allPaths=**} {
+        allow read, write, delete: if request.auth != null && (
+          !exists(/databases/$(database)/documents/chats/$(chatId)) || 
+          isParticipant(chatId)
+        );
+      }
+    }
+
+    // ---------------- OTHERS ----------------
+    match /statuses/{id} { allow read, write, delete: if request.auth != null; }
+    match /status_views/{id} { allow read, write, delete: if request.auth != null; }
+    match /diagnostics/{id} { allow read, write, delete: if request.auth != null; }
+  }
+}

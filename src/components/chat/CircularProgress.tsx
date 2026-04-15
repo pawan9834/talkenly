@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -7,12 +7,14 @@ interface CircularProgressProps {
   progress: number; // 0 to 1
   size?: number;
   onCancel?: () => void;
+  label?: string;
 }
 
 export const CircularProgress: React.FC<CircularProgressProps> = ({ 
   progress, 
   size = 50,
-  onCancel 
+  onCancel,
+  label
 }) => {
   const strokeWidth = 5;
   const radius = (size - strokeWidth) / 2;
@@ -46,13 +48,21 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
         />
       </Svg>
       
-      <TouchableOpacity 
-        style={[styles.cancelBtn, { width: size, height: size }]} 
-        onPress={onCancel}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="close" size={size * 0.5} color="#FFF" />
-      </TouchableOpacity>
+      <View style={[styles.centerContent, { width: size, height: size }]}>
+        {label ? (
+          <Text style={[styles.progressText, { fontSize: size * 0.22 }]}>{label}</Text>
+        ) : onCancel ? (
+          <TouchableOpacity 
+            style={[styles.cancelBtn, { width: size, height: size }]} 
+            onPress={onCancel}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={size * 0.5} color="#FFF" />
+          </TouchableOpacity>
+        ) : (
+          <Ionicons name="arrow-down" size={size * 0.5} color="#FFF" />
+        )}
+      </View>
     </View>
   );
 };
@@ -68,5 +78,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  centerContent: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressText: {
+    color: '#FFF',
+    fontWeight: '700',
   },
 });

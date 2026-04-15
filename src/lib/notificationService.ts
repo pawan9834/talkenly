@@ -31,10 +31,10 @@ const saveTokenToFirestore = async (token: string) => {
   const user = auth().currentUser;
   if (user) {
     try {
-      await firestore().collection(Collections.USERS).doc(user.uid).set({
+      await firestore().collection(Collections.USERS).doc(user.uid).update({
         fcmToken: token,
         updatedAt: firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
+      });
       console.log('[Notification] Token saved to Firestore');
     } catch (e) {
       console.error('[Notification] Firestore Token Sync Failed:', e);

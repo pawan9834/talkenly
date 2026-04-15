@@ -13,6 +13,7 @@ import {
   Modal,
   TouchableWithoutFeedback,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -27,6 +28,7 @@ import { normalizeIndianPhoneNumber } from '../lib/phoneUtils';
 import { subscribeUserChats, fetchUserByPhone, markMessagesAsDelivered } from '../lib/chatService';
 import { formatStatusTime } from '../lib/timeUtils';
 import { getCachedImage } from '../lib/imageHandler';
+import { deleteAccountAndAllData } from '../lib/deleteAccountService';
 import StatusRing from '../components/chat/StatusRing';
 import StatusScreen from './StatusScreen';
 
@@ -46,6 +48,8 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'Chats' | 'Updates' | 'Calls'>('Chats');
   const [menuVisible, setMenuVisible] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [chats, setChats] = useState<any[]>(CHATS_INITIAL);
   const [recipientCache, setRecipientCache] = useState<Record<string, any>>({});
   const [userStatuses, setUserStatuses] = useState<Record<string, any>>({});
@@ -244,6 +248,25 @@ export default function HomeScreen() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    try {
+      await deleteAccountAndAllData();
+      // Auth state change will auto-navigate to Login
+    } catch (error: any) {
+      console.error('[DeleteAccount]', error);
+      Alert.alert(
+        'Delete Failed',
+        error.message?.includes('requires-recent-login')
+          ? 'For security, please log out and log back in before deleting your account.'
+          : error.message || 'Could not delete account. Please try again.',
+      );
+    } finally {
+      setDeleteModalVisible(false);
+      setDeleteLoading(false);
+    }
+  };
+
   const renderChatItem = ({ item }: { item: any }) => {
     const stories = userStatuses[item.phone] || [];
     const hasStatus = stories.length > 0;
@@ -392,6 +415,12 @@ export default function HomeScreen() {
                 }}>
                   <Text style={[styles.dropdownText, { color: colors.textPrimary }]}>Logout</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={[styles.dropdownItem, styles.dropdownItemDanger]} onPress={() => {
+                  setMenuVisible(false);
+                  setDeleteModalVisible(true);
+                }}>
+                  <Text style={styles.dropdownTextDanger}>Delete account</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </TouchableWithoutFeedback>
@@ -416,6 +445,42 @@ export default function HomeScreen() {
                   handleLogout();
                 }}>
                   <Text style={styles.dialogBtnText}>Log out</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* DELETE ACCOUNT CONFIRMATION MODAL */}
+        <Modal
+          visible={deleteModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => !deleteLoading && setDeleteModalVisible(false)}
+        >
+          <View style={styles.dialogOverlay}>
+            <View style={[styles.dialogBox, { backgroundColor: colors.background }]}>
+              <Text style={[styles.dialogTitle, { color: '#D32F2F' }]}>⚠️ Delete Account</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 15, lineHeight: 22 }}>
+                This will permanently delete:
+                {''}• Your account and profile {''}• All your chats and messages {''}• All photos, videos, and media {''}• All your statuses{''}{'This action cannot be undone.'}
+              </Text>
+              <View style={styles.dialogActions}>
+                <TouchableOpacity
+                  style={styles.dialogBtn}
+                  onPress={() => setDeleteModalVisible(false)}
+                  disabled={deleteLoading}
+                >
+                  <Text style={styles.dialogBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.dialogBtn, deleteLoading && { opacity: 0.5 }]}
+                  onPress={handleDeleteAccount}
+                  disabled={deleteLoading}
+                >
+                  <Text style={styles.dialogBtnTextDanger}>
+                    {deleteLoading ? 'Deleting...' : 'Delete'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -645,13 +710,16 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.1)' },
   dropdownMenu: { position: 'absolute', top: 50, right: 10, borderRadius: 8, paddingVertical: 8, minWidth: 180, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
   dropdownItem: { paddingHorizontal: 16, paddingVertical: 14 },
+  dropdownItemDanger: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#FFE0E0', marginTop: 4 },
   dropdownText: { fontSize: 16 },
+  dropdownTextDanger: { fontSize: 16, color: '#D32F2F', fontWeight: '600' },
   dialogOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   dialogBox: { width: '80%', borderRadius: 8, padding: 24, elevation: 5 },
   dialogTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
   dialogActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 24 },
   dialogBtn: { marginLeft: 16, paddingHorizontal: 8, paddingVertical: 4 },
   dialogBtnText: { fontSize: 15, color: '#00A884', fontWeight: 'bold' },
+  dialogBtnTextDanger: { fontSize: 15, color: '#D32F2F', fontWeight: 'bold' },
   emptyContainer: {
     paddingTop: 100,
     alignItems: 'center',

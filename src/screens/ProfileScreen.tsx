@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather, MaterialIcons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { ZegoSendCallInvitationButton } from '@zegocloud/zego-uikit-prebuilt-call-rn';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useAuthStore } from '../store/authStore';
@@ -370,14 +371,26 @@ export default function ProfileScreen() {
               <Ionicons name="chatbubble-ellipses" size={24} color={colors.accent} />
               <Text style={[styles.actionLabel, { color: colors.accent }]}>Message</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionItem}>
-              <Ionicons name="call" size={24} color={colors.accent} />
-              <Text style={[styles.actionLabel, { color: colors.accent }]}>Audio</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionItem}>
-              <MaterialCommunityIcons name="video" size={28} color={colors.accent} />
-              <Text style={[styles.actionLabel, { color: colors.accent }]}>Video</Text>
-            </TouchableOpacity>
+            <ZegoSendCallInvitationButton
+              invitees={[{ userID: targetUid || '', userName: name }]}
+              isVideoCall={false}
+              resourceID={"zego_uikit_call"}
+              backgroundColor="transparent"
+              width={width / 4}
+              height={60}
+              text="Audio"
+              textStyle={{ color: colors.accent, fontSize: 12, marginTop: 6, fontWeight: '500' }}
+            />
+            <ZegoSendCallInvitationButton
+              invitees={[{ userID: targetUid || '', userName: name }]}
+              isVideoCall={true}
+              resourceID={"zego_uikit_call"}
+              backgroundColor="transparent"
+              width={width / 4}
+              height={60}
+              text="Video"
+              textStyle={{ color: colors.accent, fontSize: 12, marginTop: 6, fontWeight: '500' }}
+            />
             <TouchableOpacity style={styles.actionItem} onPress={() => Alert.alert('Coming Soon', 'User status viewing is coming soon!')}>
               <Ionicons name="radio-outline" size={24} color={colors.accent} />
               <Text style={[styles.actionLabel, { color: colors.accent }]}>Status</Text>

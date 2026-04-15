@@ -49,7 +49,8 @@ export const uploadChatMedia = async (
       width: asset.width,
       height: asset.height,
       duration: asset.duration || null,
-      fileName: fullFilename
+      fileName: fullFilename,
+      fileSize: asset.fileSize || 0
     };
   } catch (error) {
     console.error('[MediaService] Upload Failed:', error);

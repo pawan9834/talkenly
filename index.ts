@@ -1,4 +1,10 @@
 import { registerRootComponent } from 'expo';
+import { Platform } from 'react-native';
+
+// Polyfill Platform for libraries that use it without importing it
+if (typeof global !== 'undefined') {
+  (global as any).Platform = Platform;
+}
 
 import App from './App';
 

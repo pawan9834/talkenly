@@ -16,6 +16,15 @@
       "googleServicesFile": "./google-services.json",
       "versionCode": 1,
       "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
+        "MODIFY_AUDIO_SETTINGS",
+        "BLUETOOTH",
+        "BLUETOOTH_CONNECT"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#075E54"

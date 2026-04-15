@@ -5,6 +5,8 @@ import { Video, ResizeMode } from 'expo-av';
 import { CircularProgress } from './CircularProgress';
 
 const URL_REGEX = /(?:https?:\/\/|www\.|[a-z0-9-]+\.[a-z]{2,})\S*/gi;
+import { formatFileSize } from '../../lib/formatUtils';
+import { getLocalMediaUri, downloadMedia } from '../../lib/mediaDownloadService';
 
 export interface ChatMessageUI {
   id: string;
@@ -25,6 +27,9 @@ export interface ChatMessageUI {
   isStarred?: boolean;
   mediaUrl?: string;
   mediaType?: 'image' | 'video';
+  fileSize?: number;
+  fileName?: string;
+  localPath?: string;
   duration?: number | null;
 }
 
@@ -311,6 +316,145 @@ const MessageItem: React.FC<MessageItemProps> = ({
   uploadProgress,
   onCancelUpload
 }) => {
+  const [localUri, setLocalUri] = React.useState<string | null>(item.localPath || null);
+  const [isDownloading, setIsDownloading] = React.useState(false);
+  const [downloadProgress, setDownloadProgress] = React.useState(0);
+
+  // Check for local file on mount
+  React.useEffect(() => {
+    const checkLocal = async () => {
+      // If we're the sender, we already have it locally usually, 
+      // but let's be robust and check the file system.
+      if (item.fileName) {
+        const uri = await getLocalMediaUri(item.fileName);
+        if (uri) setLocalUri(uri);
+      }
+    };
+    if (!localUri && (item.type === 'image' || item.type === 'video')) {
+      checkLocal();
+    }
+  }, [item.fileName, item.id]);
+
+  const handleDownload = async () => {
+    if (!item.mediaUrl || !item.fileName || isDownloading) return;
+    
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    
+    try {
+      const uri = await downloadMedia(item.mediaUrl, item.fileName, (p) => {
+        setDownloadProgress(p);
+      });
+      setLocalUri(uri);
+      setIsDownloading(false);
+    } catch (error) {
+      console.error('[MessageItem] Download failed:', error);
+      setIsDownloading(false);
+      Alert.alert('Download Failed', 'Could not download media. Please try again.');
+    }
+  };
+
+  const renderDownloadOverlay = () => {
+    if (localUri || item.isMe || isDownloading) return null;
+    
+    return (
+      <View style={styles.downloadOverlay}>
+        <TouchableOpacity style={styles.downloadBtn} onPress={handleDownload} activeOpacity={0.8}>
+          <Ionicons name="arrow-down" size={28} color="#FFF" />
+          {item.fileSize ? (
+            <Text style={styles.downloadSizeText}>{formatFileSize(item.fileSize)}</Text>
+          ) : null}
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderDownloadProgress = () => {
+    const label = `${Math.round(downloadProgress * 100)}%`;
+    
+    return (
+      <View style={styles.uploadOverlay}>
+        <CircularProgress
+          progress={downloadProgress}
+          size={55}
+          label={label}
+        />
+        {item.fileSize ? (
+          <Text style={styles.downloadSizeTextBelow}>{formatFileSize(item.fileSize)}</Text>
+        ) : null}
+      </View>
+    );
+  };
+
+  const renderMediaContent = () => {
+    if (item.type !== 'image' && item.type !== 'video') return null;
+    if (!item.mediaUrl && !localUri) return null;
+
+    const sourceUri = localUri || item.mediaUrl;
+    // Show a blurred placeholder if not downloaded yet
+    const isPlaceholder = !localUri && !item.isMe;
+
+    return (
+      <View style={styles.mediaContainer}>
+        {item.type === 'image' ? (
+          <View style={{ flex: 1 }}>
+            <Image
+              source={{ uri: sourceUri }}
+              style={[styles.messageImage, isPlaceholder && styles.blurredImage]}
+              resizeMode="cover"
+              blurRadius={isPlaceholder ? 20 : 0}
+            />
+            {renderDownloadOverlay()}
+          </View>
+        ) : (
+          <View style={styles.videoPlaceholder}>
+            {/* If placeholder, show a blurred Image instead of the Video component for performance and blur support */}
+            {isPlaceholder ? (
+               <Image
+                 source={{ uri: sourceUri }}
+                 style={[styles.messageImage, styles.blurredImage]}
+                 resizeMode="cover"
+                 blurRadius={20}
+               />
+            ) : (
+              <Video
+                source={{ uri: sourceUri }}
+                style={styles.messageImage}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay={false}
+              />
+            )}
+            
+            {!isPlaceholder ? (
+               <View style={styles.playOverlay}>
+                  <Ionicons name="play-circle" size={50} color="rgba(255,255,255,0.8)" />
+                  {item.duration && (
+                    <Text style={styles.durationText}>
+                      {Math.floor(item.duration / 1000)}s
+                    </Text>
+                  )}
+               </View>
+            ) : renderDownloadOverlay()}
+          </View>
+        )}
+
+        {/* Upload Progress Overlay */}
+        {typeof uploadProgress === 'number' && (
+          <View style={styles.uploadOverlay}>
+            <CircularProgress
+              progress={uploadProgress}
+              size={50}
+              onCancel={onCancelUpload}
+            />
+          </View>
+        )}
+
+        {/* Download Progress Overlay */}
+        {isDownloading && renderDownloadProgress()}
+      </View>
+    );
+  };
+
   return (
     <TouchableHighlight
       onPress={() => onPress?.(item)}
@@ -377,44 +521,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
             />
 
             {/* Media Rendering */}
-            {(item.type === 'image' || item.type === 'video') && item.mediaUrl && (
-              <View style={styles.mediaContainer}>
-                {item.type === 'image' ? (
-                  <Image
-                    source={{ uri: item.mediaUrl }}
-                    style={styles.messageImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.videoPlaceholder}>
-                    <Video
-                      source={{ uri: item.mediaUrl }}
-                      style={styles.messageImage}
-                      resizeMode={ResizeMode.COVER}
-                      shouldPlay={false}
-                    />
-                    <View style={styles.playOverlay}>
-                      <Ionicons name="play-circle" size={50} color="rgba(255,255,255,0.8)" />
-                      {item.duration && (
-                        <Text style={styles.durationText}>
-                          {Math.floor(item.duration / 1000)}s
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-                )}
-                {/* Background upload progress overlay */}
-                {typeof uploadProgress === 'number' && (
-                  <View style={styles.uploadOverlay}>
-                    <CircularProgress
-                      progress={uploadProgress}
-                      size={50}
-                      onCancel={onCancelUpload}
-                    />
-                  </View>
-                )}
-              </View>
-            )}
+            {renderMediaContent()}
 
             {item.text && item.text !== '📷 Photo' && item.text !== '📽️ Video' && (
               <RenderMessageText
@@ -529,7 +636,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
-
+  },
+  downloadOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  downloadBtn: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 30,
+    width: 70,
+    height: 70,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  downloadSizeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  downloadSizeTextBelow: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 6,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  blurredImage: {
+    opacity: 0.9,
   },
   bubbleFooter: {
     flexDirection: 'row',

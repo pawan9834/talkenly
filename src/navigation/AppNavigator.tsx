@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import { RootStackParamList } from '../types';
 import { usePresence } from '../hooks/usePresence';
 import { populateEmojiDatabase } from '../lib/emojiService';
+import { ZegoCallInvitationDialog, ZegoUIKitPrebuiltCallWaitingScreen, ZegoUIKitPrebuiltCallInCallScreen } from '@zegocloud/zego-uikit-prebuilt-call-rn';
 import { useEffect } from 'react';
 
 import HomeScreen from '../screens/HomeScreen';
@@ -15,6 +16,7 @@ import OtpScreen from '../screens/OtpScreen';
 import SetProfileScreen from '../screens/SetProfileScreen';
 import ContactsScreen from '../screens/ContactsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import AccountSettingsScreen from '../screens/AccountSettingsScreen';
 import MyStatusDetailsScreen from '../screens/MyStatusDetailsScreen';
 import StatusMediaEditor from '../screens/StatusMediaEditor';
 import BlockedContactsScreen from '../screens/BlockedContactsScreen';
@@ -27,8 +29,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function AppNavigator() {
     const { user, hasProfile } = useAuthStore();
     
-    // Track presence globally for authenticated users
-    usePresence();
+    // Track presence globally — only for users who have completed profile setup
+    usePresence(hasProfile);
 
     useEffect(() => {
         // Initialize emoji database in the background
@@ -37,6 +39,7 @@ export default function AppNavigator() {
 
     return (
         <NavigationContainer>
+            <ZegoCallInvitationDialog />
             <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
                 {user ? (
                     hasProfile ? (
@@ -46,12 +49,15 @@ export default function AppNavigator() {
                             <Stack.Screen name="Profile" component={ProfileScreen} />
                             <Stack.Screen name="Contacts" component={ContactsScreen} />
                             <Stack.Screen name="Settings" component={SettingsScreen} />
+                            <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
                             <Stack.Screen name="MyStatusDetails" component={MyStatusDetailsScreen} />
                             <Stack.Screen name="StatusMediaEditor" component={StatusMediaEditor} />
                             <Stack.Screen name="BlockedContacts" component={BlockedContactsScreen} />
                             <Stack.Screen name="MediaLinksDocs" component={MediaLinksDocsScreen} />
                             <Stack.Screen name="StarredMessages" component={StarredMessagesScreen} />
                             <Stack.Screen name="ImageViewer" component={ImageViewerScreen} />
+                            <Stack.Screen name="ZegoUIKitPrebuiltCallWaitingScreen" component={ZegoUIKitPrebuiltCallWaitingScreen} options={{ headerShown: false }} />
+                            <Stack.Screen name="ZegoUIKitPrebuiltCallInCallScreen" component={ZegoUIKitPrebuiltCallInCallScreen} options={{ headerShown: false }} />
                         </>
                     ) : (
                         <Stack.Screen name="SetProfile" component={SetProfileScreen} />

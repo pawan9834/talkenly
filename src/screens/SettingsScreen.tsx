@@ -133,7 +133,7 @@ export default function SettingsScreen() {
 
         {/* Setting Groups */}
         <View style={[styles.settingsGroup, { backgroundColor: colors.cardBg, borderTopColor: colors.border, borderBottomColor: colors.border, borderTopWidth: 1, borderBottomWidth: 1 }]}>
-          {renderSettingItem('key-outline', 'Ionicons', 'Account', 'Security notifications, change number')}
+          {renderSettingItem('key-outline', 'Ionicons', 'Account', 'Security notifications, Delete account', () => navigation.navigate('AccountSettings'))}
           {renderSettingItem('lock-closed-outline', 'Ionicons', 'Blocked Contacts', 'Block contacts', () => navigation.navigate('BlockedContacts'))}
           {renderSettingItem('face-man-profile', 'MaterialIcons', 'Avatar', 'Create, edit, profile photo')}
           {renderSettingItem('chatbox-outline', 'Ionicons', 'Chats', 'Theme, wallpapers, chat history')}

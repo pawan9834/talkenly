@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, TouchableWithoutFeedback, Alert, Platform } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, Feather, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ZegoSendCallInvitationButton } from '@zegocloud/zego-uikit-prebuilt-call-rn';
 import { deleteChat, blockUser } from '../../lib/chatService';
 
 interface ChatHeaderProps {
@@ -142,12 +143,26 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           </View>
 
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerIcon}>
-              <MaterialCommunityIcons name="video" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Ionicons name="call" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
+            {recipientUid && (
+              <>
+                <ZegoSendCallInvitationButton
+                  invitees={[{ userID: recipientUid, userName: recipientName }]}
+                  isVideoCall={true}
+                  resourceID={"zego_uikit_call"}
+                  backgroundColor="transparent"
+                  width={44}
+                  height={44}
+                />
+                <ZegoSendCallInvitationButton
+                  invitees={[{ userID: recipientUid, userName: recipientName }]}
+                  isVideoCall={false}
+                  resourceID={"zego_uikit_call"}
+                  backgroundColor="transparent"
+                  width={44}
+                  height={44}
+                />
+              </>
+            )}
             <TouchableOpacity
               style={styles.headerIcon}
               onPress={() => setMenuVisible(true)}
