@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -11,20 +11,33 @@ import {
   Text,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Contacts from 'expo-contacts';
-import FastEmojiPicker from './FastEmojiPicker';
-import { FlatList, Modal } from 'react-native';
-import { updateTypingStatus } from '../../lib/chatService';
-import { uploadChatMedia } from '../../lib/mediaService';
-import { getLocation, hasLocationPermission, startLiveLocation, stopLiveLocation, LIVE_DURATIONS } from '../../lib/locationService';
-import * as ImagePicker from 'expo-image-picker';
-import MediaPreviewModal from './MediaPreviewModal';
-
+} from "react-native";
+import {
+  Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons,
+} from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Contacts from "expo-contacts";
+import FastEmojiPicker from "./FastEmojiPicker";
+import { FlatList, Modal } from "react-native";
+import { updateTypingStatus } from "../../lib/chatService";
+import { uploadChatMedia } from "../../lib/mediaService";
+import {
+  getLocation,
+  hasLocationPermission,
+  startLiveLocation,
+  stopLiveLocation,
+  LIVE_DURATIONS,
+} from "../../lib/locationService";
+import * as ImagePicker from "expo-image-picker";
+import MediaPreviewModal from "./MediaPreviewModal";
 interface ChatInputProps {
-  onSend: (text: string, replyTo?: any, uploadAsset?: ImagePicker.ImagePickerAsset) => void;
+  onSend: (
+    text: string,
+    replyTo?: any,
+    uploadAsset?: ImagePicker.ImagePickerAsset,
+  ) => void;
   chatId: string;
   userPhone: string;
   replyTo?: any;
@@ -38,35 +51,34 @@ interface ChatInputProps {
     accent: string;
   };
 }
-
 const KEYBOARD_OFFSET = 51;
-
-// ── WhatsApp-style Attachment Options ─────────────────────────────────────────
 const ATTACHMENT_OPTIONS = [
-  { label: 'Document', icon: 'file-document-outline', lib: 'MC', color: '#7F57F1' },
-  { label: 'Gallery', icon: 'image', lib: 'Ion', color: '#E91E8C' },
-  { label: 'Location', icon: 'location-sharp', lib: 'Ion', color: '#4CAF50' },
-  { label: 'Contact', icon: 'person', lib: 'Ion', color: '#2196F3' },
+  {
+    label: "Document",
+    icon: "file-document-outline",
+    lib: "MC",
+    color: "#7F57F1",
+  },
+  { label: "Gallery", icon: "image", lib: "Ion", color: "#E91E8C" },
+  { label: "Location", icon: "location-sharp", lib: "Ion", color: "#4CAF50" },
+  { label: "Contact", icon: "person", lib: "Ion", color: "#2196F3" },
 ];
-
 const AttachIcon = ({ icon, lib }: { icon: string; lib: string }) => {
-  const p = { name: icon as any, size: 26, color: '#FFFFFF' };
-  if (lib === 'MC') return <MaterialCommunityIcons {...p} />;
-  if (lib === 'MI') return <MaterialIcons {...p} />;
+  const p = { name: icon as any, size: 26, color: "#FFFFFF" };
+  if (lib === "MC") return <MaterialCommunityIcons {...p} />;
+  if (lib === "MI") return <MaterialIcons {...p} />;
   return <Ionicons {...p} />;
 };
-
-// ── Main Component ─────────────────────────────────────────────────────────────
 const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
   chatId,
   userPhone,
   replyTo,
   onCancelReply,
-  colors
+  colors,
 }) => {
   const insets = useSafeAreaInsets();
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [isEmojiPickerVisible, setIsEmojiPickerVisible] = useState(false);
   const [isAttachPickerVisible, setIsAttachPickerVisible] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
@@ -75,23 +87,20 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const inputRef = useRef<TextInput>(null);
   const isSwitchingRef = useRef(false);
   const attachAnim = useRef(new Animated.Value(0)).current;
-
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-
-  // Contact Picker State
   const [contactPickerVisible, setContactPickerVisible] = useState(false);
   const [allContacts, setAllContacts] = useState<Contacts.Contact[]>([]);
-  const [contactSearch, setContactSearch] = useState('');
-  // Location state
+  const [contactSearch, setContactSearch] = useState("");
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
-  const [locationStep, setLocationStep] = useState<'pick' | 'live-duration'>('pick');
+  const [locationStep, setLocationStep] = useState<"pick" | "live-duration">(
+    "pick",
+  );
   const [mediaLoading, setMediaLoading] = useState(false);
-  const [previewAsset, setPreviewAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [previewAsset, setPreviewAsset] =
+    useState<ImagePicker.ImagePickerAsset | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
-
-  // ── Attachment Picker ───────────────────────────────────────────────────────
   const showAttachPicker = () => {
     Keyboard.dismiss();
     setIsEmojiPickerVisible(false);
@@ -103,7 +112,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
       friction: 9,
     }).start();
   };
-
   const hideAttachPicker = () => {
     Animated.timing(attachAnim, {
       toValue: 0,
@@ -111,130 +119,133 @@ const ChatInput: React.FC<ChatInputProps> = ({
       useNativeDriver: true,
     }).start(() => setIsAttachPickerVisible(false));
   };
-
   const toggleAttachPicker = () => {
     isAttachPickerVisible ? hideAttachPicker() : showAttachPicker();
   };
-
-  // ── Contact Share ───────────────────────────────────────────────────────────
   const handleContactShare = async () => {
     hideAttachPicker();
-
     const { status } = await Contacts.requestPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Please allow contacts access in your device settings.');
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Denied",
+        "Please allow contacts access in your device settings.",
+      );
       return;
     }
-
-    // Fetch all contacts with phone numbers
     const { data } = await Contacts.getContactsAsync({
       fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
       sort: Contacts.SortTypes.FirstName,
     });
-
-    const withPhone = data.filter(c => c.phoneNumbers && c.phoneNumbers.length > 0);
+    const withPhone = data.filter(
+      (c) => c.phoneNumbers && c.phoneNumbers.length > 0,
+    );
     setAllContacts(withPhone);
-    setContactSearch('');
+    setContactSearch("");
     setContactPickerVisible(true);
   };
-
   const sendContact = (contact: Contacts.Contact) => {
     setContactPickerVisible(false);
-    const name = contact.name || 'Unknown';
-    const phones = contact.phoneNumbers?.map(p => p.number ?? '') ?? [];
-    // Encode as a special JSON payload — chatService will decode this
-    onSend(JSON.stringify({ __type: 'contact', name, phones }));
+    const name = contact.name || "Unknown";
+    const phones = contact.phoneNumbers?.map((p) => p.number ?? "") ?? [];
+    onSend(JSON.stringify({ __type: "contact", name, phones }));
   };
-
-  const filteredContacts = allContacts.filter(c =>
-    c.name?.toLowerCase().includes(contactSearch.toLowerCase())
+  const filteredContacts = allContacts.filter((c) =>
+    c.name?.toLowerCase().includes(contactSearch.toLowerCase()),
   );
-
-  // ── Location Share (instant from cache) ────────────────────────────────────────
   const handleLocationShare = () => {
     hideAttachPicker();
     if (!hasLocationPermission()) {
       Alert.alert(
-        'Location not available',
-        'Please allow location access in your device settings and restart the app.',
+        "Location not available",
+        "Please allow location access in your device settings and restart the app.",
       );
       return;
     }
-    setLocationStep('pick');
+    setLocationStep("pick");
     setLocationModalVisible(true);
   };
-
   const sendCurrentLocation = async () => {
     setLocationModalVisible(false);
     setLocationLoading(true);
     try {
       const loc = await getLocation();
-      if (!loc) { Alert.alert('Error', 'Could not get your location.'); return; }
-      onSend(JSON.stringify({ __type: 'location', ...loc }));
+      if (!loc) {
+        Alert.alert("Error", "Could not get your location.");
+        return;
+      }
+      onSend(JSON.stringify({ __type: "location", ...loc }));
     } finally {
       setLocationLoading(false);
     }
   };
-
   const sendLiveLocation = async (durationSeconds: number, label: string) => {
     setLocationModalVisible(false);
     setLocationLoading(true);
     try {
       const loc = await getLocation();
-      if (!loc) { Alert.alert('Error', 'Could not get your location.'); return; }
-      // Create a unique live location ID
+      if (!loc) {
+        Alert.alert("Error", "Could not get your location.");
+        return;
+      }
       const liveId = `live_${Date.now()}`;
-      onSend(JSON.stringify({ __type: 'liveLocation', liveId, duration: label, durationSeconds, ...loc }));
-      // Start streaming GPS updates to Firestore
+      onSend(
+        JSON.stringify({
+          __type: "liveLocation",
+          liveId,
+          duration: label,
+          durationSeconds,
+          ...loc,
+        }),
+      );
       await startLiveLocation(liveId, durationSeconds);
     } finally {
       setLocationLoading(false);
     }
   };
-
   const handleGalleryPick = async () => {
     try {
       hideAttachPicker();
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Gallery permission is required to send photos and videos.');
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Denied",
+          "Gallery permission is required to send photos and videos.",
+        );
         return;
       }
-
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.All,
         quality: 0.8,
-        allowsEditing: false, // Don't allow default editing, we use our preview
+        allowsEditing: false,
       });
-
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setPreviewAsset(result.assets[0]);
       }
     } catch (err) {
-      console.error('[GalleryPick] Error:', err);
+      console.error("[GalleryPick] Error:", err);
     }
   };
-
   const handleMediaSend = async (caption: string) => {
     if (!previewAsset) return;
-
-    // Non-blocking: Pass asset to onSend which will handle background upload in ChatScreen
-    onSend(caption || '', undefined, previewAsset);
+    onSend(caption || "", undefined, previewAsset);
     setPreviewAsset(null);
   };
-
-  // ── Back Button Handler ─────────────────────────────────────────────────────
   useEffect(() => {
     const onBackPress = () => {
-      if (isAttachPickerVisible) { hideAttachPicker(); return true; }
-      if (isEmojiPickerVisible) { toggleEmojiPicker(); return true; }
+      if (isAttachPickerVisible) {
+        hideAttachPicker();
+        return true;
+      }
+      if (isEmojiPickerVisible) {
+        toggleEmojiPicker();
+        return true;
+      }
       return false;
     };
-    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
     return () => sub.remove();
   }, [isEmojiPickerVisible, isAttachPickerVisible]);
-
-  // ── Typing Status ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!chatId || !userPhone) return;
     if (message.length > 0 && !isTyping) {
@@ -248,14 +259,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
         updateTypingStatus(chatId, userPhone, false);
       }
     }, 2000);
-    return () => { if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current); };
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
   }, [message, chatId, userPhone]);
-
-  // ── Keyboard Listeners ─────────────────────────────────────────────────────
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
     const showSub = Keyboard.addListener(showEvent, (e) => {
       const h = e.endCoordinates.height;
       setLastKeyboardHeight(h);
@@ -265,36 +277,28 @@ const ChatInput: React.FC<ChatInputProps> = ({
       isSwitchingRef.current = false;
       if (isAttachPickerVisible) hideAttachPicker();
     });
-
     const hideSub = Keyboard.addListener(hideEvent, () => {
       setIsKeyboardVisible(false);
       if (!isSwitchingRef.current) setManualKeyboardHeight(0);
       isSwitchingRef.current = false;
     });
-
-    return () => { showSub.remove(); hideSub.remove(); };
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
   }, [isAttachPickerVisible]);
-
-  // ── Handlers ───────────────────────────────────────────────────────────────
   const handleSend = () => {
     if (message.trim().length === 0) return;
-
     const wasEmojiOpen = isEmojiPickerVisible;
     onSend(message.trim(), replyTo);
-    setMessage('');
-
+    setMessage("");
     if (replyTo) onCancelReply?.();
-
-    // WhatsApp style: After sending, if emoji picker is open, we can choose to keep it open
-    // BUT user specifically requested to close it and open the keyboard.
     if (wasEmojiOpen) {
       setIsEmojiPickerVisible(false);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-
     if (isAttachPickerVisible) hideAttachPicker();
   };
-
   const toggleEmojiPicker = () => {
     if (isEmojiPickerVisible) {
       isSwitchingRef.current = true;
@@ -306,16 +310,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
       setManualKeyboardHeight(lastKeyboardHeight + KEYBOARD_OFFSET);
     }
   };
-
   const isAnyKeyboardOpen = isKeyboardVisible || isEmojiPickerVisible;
-
-  const translateY = attachAnim.interpolate({ inputRange: [0, 1], outputRange: [40, 0] });
-
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const translateY = attachAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [40, 0],
+  });
   return (
     <View style={{ backgroundColor: colors.inputAreaBg }}>
-
-      {/* ── Location Picker Modal ─────────────────────────────────────────── */}
+      {}
       <Modal
         visible={locationModalVisible}
         animationType="slide"
@@ -323,89 +325,159 @@ const ChatInput: React.FC<ChatInputProps> = ({
         onRequestClose={() => setLocationModalVisible(false)}
       >
         <View style={styles.contactModalOverlay}>
-          <View style={[styles.contactModal, { backgroundColor: colors.inputAreaBg, height: 'auto' }]}>
-
-            {/* Header */}
-            <View style={[styles.contactModalHeader, { borderBottomColor: colors.icon + '33' }]}>
+          <View
+            style={[
+              styles.contactModal,
+              { backgroundColor: colors.inputAreaBg, height: "auto" },
+            ]}
+          >
+            {}
+            <View
+              style={[
+                styles.contactModalHeader,
+                { borderBottomColor: colors.icon + "33" },
+              ]}
+            >
               <TouchableOpacity
-                onPress={() => locationStep === 'live-duration'
-                  ? setLocationStep('pick')
-                  : setLocationModalVisible(false)
+                onPress={() =>
+                  locationStep === "live-duration"
+                    ? setLocationStep("pick")
+                    : setLocationModalVisible(false)
                 }
               >
                 <Ionicons
-                  name={locationStep === 'live-duration' ? 'arrow-back' : 'close'}
+                  name={
+                    locationStep === "live-duration" ? "arrow-back" : "close"
+                  }
                   size={24}
                   color={colors.textPrimary}
                 />
               </TouchableOpacity>
-              <Text style={[styles.contactModalTitle, { color: colors.textPrimary }]}>
-                {locationStep === 'pick' ? 'Share location' : 'Share live location for...'}
+              <Text
+                style={[
+                  styles.contactModalTitle,
+                  { color: colors.textPrimary },
+                ]}
+              >
+                {locationStep === "pick"
+                  ? "Share location"
+                  : "Share live location for..."}
               </Text>
               <View style={{ width: 24 }} />
             </View>
-
-            {locationStep === 'pick' ? (
-              // ── Step 1: Pick Type ───────────────────────────────────────
+            {locationStep === "pick" ? (
               <View style={styles.locationPickerBody}>
-                {/* Current Location Option */}
+                {}
                 <TouchableOpacity
-                  style={[styles.locationOption, { borderBottomColor: colors.icon + '22' }]}
+                  style={[
+                    styles.locationOption,
+                    { borderBottomColor: colors.icon + "22" },
+                  ]}
                   onPress={sendCurrentLocation}
                 >
-                  <View style={[styles.locationOptionIcon, { backgroundColor: '#4CAF50' }]}>
+                  <View
+                    style={[
+                      styles.locationOptionIcon,
+                      { backgroundColor: "#4CAF50" },
+                    ]}
+                  >
                     <Ionicons name="location-sharp" size={22} color="#FFF" />
                   </View>
                   <View style={styles.locationOptionText}>
-                    <Text style={[styles.locationOptionTitle, { color: colors.textPrimary }]}>
+                    <Text
+                      style={[
+                        styles.locationOptionTitle,
+                        { color: colors.textPrimary },
+                      ]}
+                    >
                       Send current location
                     </Text>
-                    <Text style={[styles.locationOptionSub, { color: colors.icon }]}>
+                    <Text
+                      style={[styles.locationOptionSub, { color: colors.icon }]}
+                    >
                       Accurate to 10 metres
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.icon} />
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={colors.icon}
+                  />
                 </TouchableOpacity>
-
-                {/* Live Location Option */}
+                {}
                 <TouchableOpacity
-                  style={[styles.locationOption, { borderBottomColor: colors.icon + '22' }]}
-                  onPress={() => setLocationStep('live-duration')}
+                  style={[
+                    styles.locationOption,
+                    { borderBottomColor: colors.icon + "22" },
+                  ]}
+                  onPress={() => setLocationStep("live-duration")}
                 >
-                  <View style={[styles.locationOptionIcon, { backgroundColor: '#2196F3' }]}>
+                  <View
+                    style={[
+                      styles.locationOptionIcon,
+                      { backgroundColor: "#2196F3" },
+                    ]}
+                  >
                     <Ionicons name="navigate" size={22} color="#FFF" />
                   </View>
                   <View style={styles.locationOptionText}>
-                    <Text style={[styles.locationOptionTitle, { color: colors.textPrimary }]}>
+                    <Text
+                      style={[
+                        styles.locationOptionTitle,
+                        { color: colors.textPrimary },
+                      ]}
+                    >
                       Share live location
                     </Text>
-                    <Text style={[styles.locationOptionSub, { color: colors.icon }]}>
+                    <Text
+                      style={[styles.locationOptionSub, { color: colors.icon }]}
+                    >
                       Share your real-time location
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.icon} />
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={colors.icon}
+                  />
                 </TouchableOpacity>
               </View>
             ) : (
-              // ── Step 2: Pick Duration ───────────────────────────────────
               <View style={styles.locationPickerBody}>
                 <Text style={[styles.liveDurationHint, { color: colors.icon }]}>
-                  Your recipient can see your location during this time.
-                  You can stop sharing at any time.
+                  Your recipient can see your location during this time. You can
+                  stop sharing at any time.
                 </Text>
                 {LIVE_DURATIONS.map((d) => (
                   <TouchableOpacity
                     key={d.label}
-                    style={[styles.locationOption, { borderBottomColor: colors.icon + '22' }]}
+                    style={[
+                      styles.locationOption,
+                      { borderBottomColor: colors.icon + "22" },
+                    ]}
                     onPress={() => sendLiveLocation(d.seconds, d.label)}
                   >
-                    <View style={[styles.locationOptionIcon, { backgroundColor: '#2196F3' }]}>
+                    <View
+                      style={[
+                        styles.locationOptionIcon,
+                        { backgroundColor: "#2196F3" },
+                      ]}
+                    >
                       <Ionicons name="time-outline" size={22} color="#FFF" />
                     </View>
-                    <Text style={[styles.locationOptionTitle, { color: colors.textPrimary }]}>
+                    <Text
+                      style={[
+                        styles.locationOptionTitle,
+                        { color: colors.textPrimary },
+                      ]}
+                    >
                       {d.label}
                     </Text>
-                    <Ionicons name="chevron-forward" size={20} color={colors.icon} />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color={colors.icon}
+                    />
                   </TouchableOpacity>
                 ))}
               </View>
@@ -413,8 +485,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           </View>
         </View>
       </Modal>
-
-      {/* ── Contact Picker Modal ──────────────────────────────────────────── */}
+      {}
       <Modal
         visible={contactPickerVisible}
         animationType="slide"
@@ -422,22 +493,49 @@ const ChatInput: React.FC<ChatInputProps> = ({
         onRequestClose={() => setContactPickerVisible(false)}
       >
         <View style={styles.contactModalOverlay}>
-          <View style={[styles.contactModal, { backgroundColor: colors.inputAreaBg }]}>
-            {/* Modal Header */}
-            <View style={[styles.contactModalHeader, { borderBottomColor: colors.icon + '33' }]}>
-              <Text style={[styles.contactModalTitle, { color: colors.textPrimary }]}>
+          <View
+            style={[
+              styles.contactModal,
+              { backgroundColor: colors.inputAreaBg },
+            ]}
+          >
+            {}
+            <View
+              style={[
+                styles.contactModalHeader,
+                { borderBottomColor: colors.icon + "33" },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.contactModalTitle,
+                  { color: colors.textPrimary },
+                ]}
+              >
                 Send Contact
               </Text>
               <TouchableOpacity onPress={() => setContactPickerVisible(false)}>
                 <Ionicons name="close" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
-
-            {/* Search Bar */}
-            <View style={[styles.contactSearchBar, { backgroundColor: colors.inputBg }]}>
-              <Ionicons name="search" size={18} color={colors.icon} style={{ marginRight: 8 }} />
+            {}
+            <View
+              style={[
+                styles.contactSearchBar,
+                { backgroundColor: colors.inputBg },
+              ]}
+            >
+              <Ionicons
+                name="search"
+                size={18}
+                color={colors.icon}
+                style={{ marginRight: 8 }}
+              />
               <TextInput
-                style={[styles.contactSearchInput, { color: colors.textPrimary }]}
+                style={[
+                  styles.contactSearchInput,
+                  { color: colors.textPrimary },
+                ]}
                 placeholder="Search contacts..."
                 placeholderTextColor={colors.icon}
                 value={contactSearch}
@@ -445,31 +543,48 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 autoFocus
               />
               {contactSearch.length > 0 && (
-                <TouchableOpacity onPress={() => setContactSearch('')}>
+                <TouchableOpacity onPress={() => setContactSearch("")}>
                   <Ionicons name="close-circle" size={18} color={colors.icon} />
                 </TouchableOpacity>
               )}
             </View>
-
-            {/* Contact List */}
+            {}
             <FlatList
               data={filteredContacts}
               keyExtractor={(item, i) => item.id ?? `${i}`}
               keyboardShouldPersistTaps="handled"
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[styles.contactRow, { borderBottomColor: colors.icon + '22' }]}
+                  style={[
+                    styles.contactRow,
+                    { borderBottomColor: colors.icon + "22" },
+                  ]}
                   onPress={() => sendContact(item)}
                 >
-                  <View style={[styles.contactAvatar, { backgroundColor: colors.accent }]}>
+                  <View
+                    style={[
+                      styles.contactAvatar,
+                      { backgroundColor: colors.accent },
+                    ]}
+                  >
                     <Text style={styles.contactAvatarText}>
-                      {(item.name?.[0] ?? '?').toUpperCase()}
+                      {(item.name?.[0] ?? "?").toUpperCase()}
                     </Text>
                   </View>
                   <View style={styles.contactInfo}>
-                    <Text style={[styles.contactName, { color: colors.textPrimary }]}>{item.name}</Text>
-                    <Text style={[styles.contactPhone, { color: colors.icon }]} numberOfLines={1}>
-                      {item.phoneNumbers?.[0]?.number ?? ''}
+                    <Text
+                      style={[
+                        styles.contactName,
+                        { color: colors.textPrimary },
+                      ]}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text
+                      style={[styles.contactPhone, { color: colors.icon }]}
+                      numberOfLines={1}
+                    >
+                      {item.phoneNumbers?.[0]?.number ?? ""}
                     </Text>
                   </View>
                   <Ionicons name="send" size={18} color={colors.accent} />
@@ -484,24 +599,29 @@ const ChatInput: React.FC<ChatInputProps> = ({
           </View>
         </View>
       </Modal>
-
-      {/* WhatsApp-style Attachment Picker */}
+      {}
       {isAttachPickerVisible && (
-        <Animated.View style={[
-          styles.attachPicker,
-          { backgroundColor: colors.inputBg, opacity: attachAnim, transform: [{ translateY }] }
-        ]}>
+        <Animated.View
+          style={[
+            styles.attachPicker,
+            {
+              backgroundColor: colors.inputBg,
+              opacity: attachAnim,
+              transform: [{ translateY }],
+            },
+          ]}
+        >
           <View style={styles.attachGrid}>
             {ATTACHMENT_OPTIONS.map((opt) => (
               <TouchableOpacity
                 key={opt.label}
                 style={styles.attachItem}
                 onPress={() => {
-                  if (opt.label === 'Contact') {
+                  if (opt.label === "Contact") {
                     handleContactShare();
-                  } else if (opt.label === 'Location') {
+                  } else if (opt.label === "Location") {
                     handleLocationShare();
-                  } else if (opt.label === 'Gallery') {
+                  } else if (opt.label === "Gallery") {
                     handleGalleryPick();
                   } else {
                     hideAttachPicker();
@@ -509,63 +629,104 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   }
                 }}
               >
-                <View style={[styles.attachCircle, { backgroundColor: opt.color }]}>
+                <View
+                  style={[styles.attachCircle, { backgroundColor: opt.color }]}
+                >
                   <AttachIcon icon={opt.icon} lib={opt.lib} />
                 </View>
-                <Text style={[styles.attachLabel, { color: colors.textPrimary }]}>{opt.label}</Text>
+                <Text
+                  style={[styles.attachLabel, { color: colors.textPrimary }]}
+                >
+                  {opt.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
         </Animated.View>
       )}
-
-      {/* Location loading bar */}
+      {}
       {locationLoading && (
-        <View style={[styles.locationLoadingBar, { backgroundColor: colors.accent + '22' }]}>
-          <Ionicons name="location-sharp" size={16} color={colors.accent} style={{ marginRight: 8 }} />
+        <View
+          style={[
+            styles.locationLoadingBar,
+            { backgroundColor: colors.accent + "22" },
+          ]}
+        >
+          <Ionicons
+            name="location-sharp"
+            size={16}
+            color={colors.accent}
+            style={{ marginRight: 8 }}
+          />
           <Text style={[styles.locationLoadingText, { color: colors.accent }]}>
             Fetching your location...
           </Text>
         </View>
       )}
-
-      {/* Input Row */}
-      <View style={{
-        paddingBottom: isAnyKeyboardOpen ? 0 : Math.max(insets.bottom, 15),
-        paddingTop: 8,
-      }}>
-        {/* Reply Preview */}
+      {}
+      <View
+        style={{
+          paddingBottom: isAnyKeyboardOpen ? 0 : Math.max(insets.bottom, 15),
+          paddingTop: 8,
+        }}
+      >
+        {}
         {replyTo && (
-          <View style={[styles.replyPreview, { backgroundColor: colors.inputBg }]}>
-            <View style={[styles.replyInner, { borderLeftColor: colors.accent, backgroundColor: colors.icon + '11' }]}>
+          <View
+            style={[styles.replyPreview, { backgroundColor: colors.inputBg }]}
+          >
+            <View
+              style={[
+                styles.replyInner,
+                {
+                  borderLeftColor: colors.accent,
+                  backgroundColor: colors.icon + "11",
+                },
+              ]}
+            >
               <View style={styles.replyContent}>
-                <Text style={[styles.replySender, { color: colors.accent }]} numberOfLines={1}>
-                  {replyTo.senderPhone === userPhone ? 'You' : replyTo.senderPhone}
+                <Text
+                  style={[styles.replySender, { color: colors.accent }]}
+                  numberOfLines={1}
+                >
+                  {replyTo.senderPhone === userPhone
+                    ? "You"
+                    : replyTo.senderPhone}
                 </Text>
-                <Text style={[styles.replyText, { color: colors.textSecondary }]} numberOfLines={1}>
+                <Text
+                  style={[styles.replyText, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
                   {replyTo.text}
                 </Text>
               </View>
-              <TouchableOpacity onPress={onCancelReply} style={styles.replyCloseBtn}>
+              <TouchableOpacity
+                onPress={onCancelReply}
+                style={styles.replyCloseBtn}
+              >
                 <Ionicons name="close-circle" size={20} color={colors.icon} />
               </TouchableOpacity>
             </View>
           </View>
         )}
-
         <View style={styles.inputContainer}>
-          <View style={[styles.inputWrapper, { backgroundColor: colors.inputBg }]}>
-
-            {/* Emoji Button */}
-            <TouchableOpacity style={styles.iconButton} onPress={toggleEmojiPicker}>
+          <View
+            style={[styles.inputWrapper, { backgroundColor: colors.inputBg }]}
+          >
+            {}
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={toggleEmojiPicker}
+            >
               <MaterialCommunityIcons
-                name={isEmojiPickerVisible ? 'keyboard-outline' : 'emoticon-outline'}
+                name={
+                  isEmojiPickerVisible ? "keyboard-outline" : "emoticon-outline"
+                }
                 size={24}
                 color={colors.icon}
               />
             </TouchableOpacity>
-
-            {/* Text Input */}
+            {}
             <TextInput
               ref={inputRef}
               style={[styles.input, { color: colors.textPrimary }]}
@@ -579,26 +740,26 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 if (isAttachPickerVisible) hideAttachPicker();
               }}
             />
-
-            {/* Paperclip (Attachment) Button */}
-            <TouchableOpacity style={styles.iconButton} onPress={toggleAttachPicker}>
+            {}
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={toggleAttachPicker}
+            >
               <MaterialCommunityIcons
                 name="paperclip"
                 size={24}
                 color={isAttachPickerVisible ? colors.accent : colors.icon}
-                style={{ transform: [{ rotate: '-45deg' }] }}
+                style={{ transform: [{ rotate: "-45deg" }] }}
               />
             </TouchableOpacity>
-
-            {/* Camera Button (shown when no text) */}
+            {}
             {message.length === 0 && (
               <TouchableOpacity style={styles.iconButton}>
                 <Ionicons name="camera" size={24} color={colors.icon} />
               </TouchableOpacity>
             )}
           </View>
-
-          {/* Send / Mic Button */}
+          {}
           <TouchableOpacity
             style={[styles.sendButton, { backgroundColor: colors.accent }]}
             onPress={handleSend}
@@ -608,15 +769,23 @@ const ChatInput: React.FC<ChatInputProps> = ({
             {mediaLoading ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : message.trim().length > 0 ? (
-              <MaterialCommunityIcons name="send" size={22} color="#FFFFFF" style={{ marginLeft: 3 }} />
+              <MaterialCommunityIcons
+                name="send"
+                size={22}
+                color="#FFFFFF"
+                style={{ marginLeft: 3 }}
+              />
             ) : (
-              <MaterialCommunityIcons name="microphone" size={24} color="#FFFFFF" />
+              <MaterialCommunityIcons
+                name="microphone"
+                size={24}
+                color="#FFFFFF"
+              />
             )}
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Media Preview Modal */}
+      {}
       {previewAsset && (
         <Modal visible={!!previewAsset} animationType="fade">
           <MediaPreviewModal
@@ -628,12 +797,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
           />
         </Modal>
       )}
-
-      {/* Emoji Picker / Keyboard Height Placeholder */}
+      {}
       <View style={{ height: manualKeyboardHeight }}>
         {isEmojiPickerVisible && (
           <FastEmojiPicker
-            onEmojiSelected={emoji => setMessage(prev => prev + emoji)}
+            onEmojiSelected={(emoji) => setMessage((prev) => prev + emoji)}
             height={lastKeyboardHeight}
           />
         )}
@@ -641,27 +809,25 @@ const ChatInput: React.FC<ChatInputProps> = ({
     </View>
   );
 };
-
 export default ChatInput;
-
 const styles = StyleSheet.create({
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     paddingHorizontal: 8,
     paddingTop: 8,
     paddingBottom: 8,
   },
   inputWrapper: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: 25,
     paddingHorizontal: 12,
     minHeight: 48,
     maxHeight: 120,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1,
@@ -680,74 +846,71 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: 6,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1,
   },
-  // ── Attachment Picker ────────────────────────────────────────────────────────
   attachPicker: {
-    width: '100%',
+    width: "100%",
     paddingVertical: 20,
     paddingHorizontal: 8,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     elevation: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
   },
   attachGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-around",
   },
   attachItem: {
-    width: '22%',
-    alignItems: 'center',
+    width: "22%",
+    alignItems: "center",
     marginBottom: 20,
   },
   attachCircle: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 8,
     elevation: 3,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
   },
   attachLabel: {
     fontSize: 12,
-    textAlign: 'center',
-    fontWeight: '500',
+    textAlign: "center",
+    fontWeight: "500",
   },
-  // ── Location Loading ─────────────────────────────────────────────────────────
   locationLoadingBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   locationLoadingText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: "500",
   },
-  // ── Location Picker Modal ────────────────────────────────────────────────────
   locationPickerBody: {
     paddingBottom: 24,
   },
   locationOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
@@ -757,11 +920,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   locationOptionText: { flex: 1 },
-  locationOptionTitle: { fontSize: 16, fontWeight: '500' },
+  locationOptionTitle: { fontSize: 16, fontWeight: "500" },
   locationOptionSub: { fontSize: 13, marginTop: 2 },
   liveDurationHint: {
     fontSize: 13,
@@ -769,33 +932,32 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     lineHeight: 18,
   },
-  // ── Contact Picker ───────────────────────────────────────────────────────────
   contactModalOverlay: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
   contactModal: {
-    height: '85%',
+    height: "85%",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   contactModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
   contactModalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   contactSearchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     margin: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -806,8 +968,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   contactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
@@ -816,33 +978,32 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 14,
   },
   contactAvatarText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   contactInfo: { flex: 1 },
-  contactName: { fontSize: 16, fontWeight: '500', marginBottom: 2 },
+  contactName: { fontSize: 16, fontWeight: "500", marginBottom: 2 },
   contactPhone: { fontSize: 13 },
   contactEmpty: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 40,
   },
-  // ── Reply Preview ──────────────────────────────────────────────────────────
   replyPreview: {
     marginHorizontal: 8,
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
-    overflow: 'hidden',
-    marginBottom: -8, // Merge with input wrapper
+    overflow: "hidden",
+    marginBottom: -8,
     paddingTop: 4,
   },
   replyInner: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 8,
     borderLeftWidth: 4,
     borderRadius: 8,
@@ -853,7 +1014,7 @@ const styles = StyleSheet.create({
   },
   replySender: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 2,
   },
   replyText: {
@@ -861,7 +1022,6 @@ const styles = StyleSheet.create({
   },
   replyCloseBtn: {
     padding: 4,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
 });
-

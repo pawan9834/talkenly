@@ -1,6 +1,5 @@
-import { create } from 'zustand';
-import { Chat, Message } from '../types';
-
+import { create } from "zustand";
+import { Chat, Message } from "../types";
 interface ChatState {
   chats: Chat[];
   activeMessages: Message[];
@@ -15,14 +14,12 @@ interface ChatState {
   addMessage: (message: Message) => void;
   clearActiveChat: () => void;
 }
-
 export const useChatStore = create<ChatState>()((set) => ({
   chats: [],
   activeMessages: [],
   activeChatId: null,
   isMessagesLoading: false,
   isChatsLoading: true,
-
   setChats: (chats) => set({ chats, isChatsLoading: false }),
   setActiveMessages: (activeMessages) =>
     set({ activeMessages, isMessagesLoading: false }),

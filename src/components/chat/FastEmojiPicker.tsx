@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,55 +8,55 @@ import {
   ActivityIndicator,
   useColorScheme,
   Dimensions,
-} from 'react-native';
-import { fetchEmojisByCategory, LocalEmoji } from '../../lib/emojiService';
-
-const { width } = Dimensions.get('window');
+} from "react-native";
+import { fetchEmojisByCategory, LocalEmoji } from "../../lib/emojiService";
+const { width } = Dimensions.get("window");
 const COLUMNS = 8;
 const CELL_SIZE = Math.floor(width / COLUMNS);
-
 const CATEGORIES = [
-  { id: 'Smileys & Emotion', icon: '😀' },
-  { id: 'People & Body', icon: '🧑' },
-  { id: 'Animals & Nature', icon: '🦄' },
-  { id: 'Food & Drink', icon: '🍔' },
-  { id: 'Activities', icon: '⚾️' },
-  { id: 'Travel & Places', icon: '✈️' },
-  { id: 'Objects', icon: '💡' },
-  { id: 'Symbols', icon: '🔣' },
-  { id: 'Flags', icon: '🏳️‍🌈' },
+  { id: "Smileys & Emotion", icon: "😀" },
+  { id: "People & Body", icon: "🧑" },
+  { id: "Animals & Nature", icon: "🦄" },
+  { id: "Food & Drink", icon: "🍔" },
+  { id: "Activities", icon: "⚾️" },
+  { id: "Travel & Places", icon: "✈️" },
+  { id: "Objects", icon: "💡" },
+  { id: "Symbols", icon: "🔣" },
+  { id: "Flags", icon: "🏳️‍🌈" },
 ];
-
 interface EmojiCellProps {
   item: LocalEmoji;
   onSelect: (emoji: string) => void;
 }
-
 const EmojiCell = React.memo(({ item, onSelect }: EmojiCellProps) => (
   <TouchableOpacity
     style={styles.cell}
     onPress={() => onSelect(item.emoji)}
     activeOpacity={0.6}
   >
-    <Text style={[styles.emojiText, { color: useColorScheme() === 'dark' ? '#E9EDEF' : '#111111' }]}>
+    <Text
+      style={[
+        styles.emojiText,
+        { color: useColorScheme() === "dark" ? "#E9EDEF" : "#111111" },
+      ]}
+    >
       {item.emoji}
     </Text>
   </TouchableOpacity>
 ));
-
 interface FastEmojiPickerProps {
   onEmojiSelected: (emoji: string) => void;
   height?: number;
 }
-
-const FastEmojiPicker: React.FC<FastEmojiPickerProps> = ({ onEmojiSelected, height = 300 }) => {
-  const theme = useColorScheme() ?? 'light';
-  const isDark = theme === 'dark';
-  
+const FastEmojiPicker: React.FC<FastEmojiPickerProps> = ({
+  onEmojiSelected,
+  height = 300,
+}) => {
+  const theme = useColorScheme() ?? "light";
+  const isDark = theme === "dark";
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].id);
   const [emojis, setEmojis] = useState<LocalEmoji[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     let isMounted = true;
     const loadEmojis = async () => {
@@ -68,23 +68,39 @@ const FastEmojiPicker: React.FC<FastEmojiPickerProps> = ({ onEmojiSelected, heig
       }
     };
     loadEmojis();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [activeCategory]);
-
-  const renderItem = useCallback(({ item }: { item: LocalEmoji }) => (
-    <EmojiCell item={item} onSelect={onEmojiSelected} />
-  ), [onEmojiSelected]);
-
+  const renderItem = useCallback(
+    ({ item }: { item: LocalEmoji }) => (
+      <EmojiCell item={item} onSelect={onEmojiSelected} />
+    ),
+    [onEmojiSelected],
+  );
   return (
-    <View style={[styles.container, { height, backgroundColor: isDark ? '#111B21' : '#F0F0F0' }]}>
-      {/* Category Tabs */}
-      <View style={[styles.tabBar, { borderBottomColor: isDark ? '#222D34' : '#E9EDEF' }]}>
-        {CATEGORIES.map(cat => (
+    <View
+      style={[
+        styles.container,
+        { height, backgroundColor: isDark ? "#111B21" : "#F0F0F0" },
+      ]}
+    >
+      {}
+      <View
+        style={[
+          styles.tabBar,
+          { borderBottomColor: isDark ? "#222D34" : "#E9EDEF" },
+        ]}
+      >
+        {CATEGORIES.map((cat) => (
           <TouchableOpacity
             key={cat.id}
             style={[
               styles.tab,
-              activeCategory === cat.id && [styles.activeTab, { borderBottomColor: '#00A884' }]
+              activeCategory === cat.id && [
+                styles.activeTab,
+                { borderBottomColor: "#00A884" },
+              ],
             ]}
             onPress={() => setActiveCategory(cat.id)}
           >
@@ -92,8 +108,7 @@ const FastEmojiPicker: React.FC<FastEmojiPickerProps> = ({ onEmojiSelected, heig
           </TouchableOpacity>
         ))}
       </View>
-
-      {/* Content */}
+      {}
       <View style={styles.listContainer}>
         {loading ? (
           <View style={styles.center}>
@@ -103,7 +118,7 @@ const FastEmojiPicker: React.FC<FastEmojiPickerProps> = ({ onEmojiSelected, heig
           <FlatList
             data={emojis}
             renderItem={renderItem}
-            keyExtractor={item => item.unified}
+            keyExtractor={(item) => item.unified}
             numColumns={COLUMNS}
             initialNumToRender={50}
             maxToRenderPerBatch={50}
@@ -121,23 +136,21 @@ const FastEmojiPicker: React.FC<FastEmojiPickerProps> = ({ onEmojiSelected, heig
     </View>
   );
 };
-
 export default FastEmojiPicker;
-
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
+    width: "100%",
   },
   tabBar: {
-    flexDirection: 'row',
+    flexDirection: "row",
     height: 50,
     borderBottomWidth: 1,
   },
   tab: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100%",
   },
   activeTab: {
     borderBottomWidth: 3,
@@ -151,15 +164,15 @@ const styles = StyleSheet.create({
   cell: {
     width: CELL_SIZE,
     height: CELL_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   emojiText: {
     fontSize: CELL_SIZE - 16,
   },
   center: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

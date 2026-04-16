@@ -1,9 +1,5 @@
-import { FirebaseAuthTypes } from '@react-native-firebase/auth';
-
-// ─── Auth ─────────────────────────────────────────────────────────────────────
+import { FirebaseAuthTypes } from "@react-native-firebase/auth";
 export type FirebaseUser = FirebaseAuthTypes.User;
-
-// ─── Navigation ───────────────────────────────────────────────────────────────
 export type RootStackParamList = {
   Login: undefined;
   Otp: {
@@ -12,8 +8,22 @@ export type RootStackParamList = {
   };
   SetProfile: undefined;
   Home: undefined;
-  Chat: { chatId: string; recipientName: string; recipientPhone: string; recipientPhoto?: string | null; recipientUid?: string };
-  Profile: { userId?: string; name?: string; photo?: string; phone?: string; about?: string } | undefined;
+  Chat: {
+    chatId: string;
+    recipientName: string;
+    recipientPhone: string;
+    recipientPhoto?: string | null;
+    recipientUid?: string;
+  };
+  Profile:
+    | {
+        userId?: string;
+        name?: string;
+        photo?: string;
+        phone?: string;
+        about?: string;
+      }
+    | undefined;
   Contacts: undefined;
   NewChat: undefined;
   Settings: undefined;
@@ -24,15 +34,13 @@ export type RootStackParamList = {
   StatusMediaEditor: { asset: any };
   StarredMessages: undefined;
   ImageViewer: {
-    mediaMessages: any[]; // Or a more specific type if possible
+    mediaMessages: any[];
     initialIndex: number;
     recipientName: string;
   };
   ZegoUIKitPrebuiltCallWaitingScreen: any;
   ZegoUIKitPrebuiltCallInCallScreen: any;
 };
-
-// ─── Firestore Data Models ────────────────────────────────────────────────────
 export interface UserProfile {
   uid: string;
   phoneNumber: string;
@@ -43,21 +51,27 @@ export interface UserProfile {
   lastSeen: number;
   isOnline: boolean;
 }
-
 export interface Message {
   id: string;
   text: string;
   senderId: string;
   createdAt: number;
-  type: 'text' | 'image' | 'audio' | 'video' | 'location' | 'contact' | 'liveLocation' | 'deleted';
+  type:
+    | "text"
+    | "image"
+    | "audio"
+    | "video"
+    | "location"
+    | "contact"
+    | "liveLocation"
+    | "deleted";
   mediaUrl?: string;
-  mediaType?: 'image' | 'video';
+  mediaType?: "image" | "video";
   fileSize?: number;
   fileName?: string;
   duration?: number | null;
-  status: 'sent' | 'delivered' | 'read';
+  status: "sent" | "delivered" | "read";
 }
-
 export interface Chat {
   id: string;
   participants: string[];

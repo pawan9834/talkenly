@@ -10,7 +10,7 @@ const testCases = [
   "Link at the end of sentence. www.example.com",
 ];
 
-testCases.forEach(str => {
+testCases.forEach((str) => {
   const matches = str.match(URL_REGEX);
   console.log(`String: "${str}" -> Matches:`, matches);
 });
