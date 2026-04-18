@@ -30,6 +30,8 @@ import { getCachedImage } from "../lib/imageHandler";
 import { RootStackParamList } from "../types";
 import { RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { LinearGradient } from "expo-linear-gradient";
+import AnimatedBubbles from "../components/ui/AnimatedBubbles";
 import {
   ChatHeader,
   ChatInput,
@@ -103,7 +105,7 @@ export default function ChatScreen() {
                 "UPDATE contacts SET uid = ? WHERE normalizedPhone = ?",
                 [targetUid, recipientPhone],
               );
-            } catch (cacheErr) {}
+            } catch (cacheErr) { }
           }
         } catch (e) {
           console.error(`[Status] Lookup failed:`, e);
@@ -148,22 +150,22 @@ export default function ChatScreen() {
   }, [recipientPhoto]);
   const colors = useMemo(
     () => ({
-      background: isDark ? "#0B141A" : "#E5DDD5",
-      headerBg: isDark ? "#202C33" : "#008080",
-      cardBg: isDark ? "#1F2C34" : "#FFFFFF",
-      textPrimary: isDark ? "#E9EDEF" : "#111111",
-      textSecondary: isDark ? "#8696A0" : "#667781",
-      bubbleSelf: isDark ? "#005C4B" : "#DCF8C6",
-      bubbleOther: isDark ? "#202C33" : "#FFFFFF",
-      inputBg: isDark ? "#2A3942" : "#FFFFFF",
-      inputAreaBg: isDark ? "#111B21" : "#F0F0F0",
-      icon: "#8696A0",
-      accent: "#00A884",
-      statusBar: isDark ? "#202C33" : "#008080",
-      divider: isDark ? "#222D34" : "#E9EDEF",
-      modalBg: isDark ? "#202C33" : "#FFFFFF",
+      background: "transparent",
+      headerBg: "#0F172A",
+      cardBg: "#1E293B",
+      textPrimary: "#FFFFFF",
+      textSecondary: "#94A3B8",
+      bubbleSelf: "#005C4B",
+      bubbleOther: "#1E293B",
+      inputBg: "#1E293B",
+      inputAreaBg: "rgba(15, 23, 42, 0.6)",
+      icon: "#94A3B8",
+      accent: "#FF6B00",
+      statusBar: "#0F172A",
+      divider: "rgba(255,255,255,0.05)",
+      modalBg: "#1E293B",
     }),
-    [isDark],
+    [],
   );
   useEffect(() => {
     if (!chatId || !myPhone) return;
@@ -177,8 +179,8 @@ export default function ChatScreen() {
           isMe: msg.senderPhone === myPhone,
           time: msg.timestamp?.toDate
             ? msg.timestamp
-                .toDate()
-                .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              .toDate()
+              .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
             : "Sending...",
           status: msg.status as any,
           type: (msg.type ?? "text") as ChatMessageUI["type"],
@@ -280,13 +282,13 @@ export default function ChatScreen() {
           });
           const replyData = replyTo
             ? {
-                id: replyTo.id,
-                text: replyTo.text,
-                senderPhone: replyTo.isMe
-                  ? "You"
-                  : recipientName || replyTo.senderPhone,
-                type: replyTo.type,
-              }
+              id: replyTo.id,
+              text: replyTo.text,
+              senderPhone: replyTo.isMe
+                ? "You"
+                : recipientName || replyTo.senderPhone,
+              type: replyTo.type,
+            }
             : undefined;
           await sendMessage(
             chatId,
@@ -306,13 +308,13 @@ export default function ChatScreen() {
     }
     const replyData = replyTo
       ? {
-          id: replyTo.id,
-          text: replyTo.text,
-          senderPhone: replyTo.isMe
-            ? "You"
-            : recipientName || replyTo.senderPhone,
-          type: replyTo.type,
-        }
+        id: replyTo.id,
+        text: replyTo.text,
+        senderPhone: replyTo.isMe
+          ? "You"
+          : recipientName || replyTo.senderPhone,
+        type: replyTo.type,
+      }
       : undefined;
     const success = await sendMessage(
       chatId,
@@ -471,7 +473,7 @@ export default function ChatScreen() {
           }
         />
       )}
-      {}
+      { }
       <Modal
         visible={deleteModalVisible}
         transparent
@@ -530,7 +532,11 @@ export default function ChatScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-      <View style={[styles.chatBody, { backgroundColor: colors.background }]}>
+      <View style={[styles.chatBody, { backgroundColor: "#0F172A" }]}>
+        <LinearGradient
+          colors={["#0F172A", "#1E293B"]}
+          style={StyleSheet.absoluteFill}
+        />
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -594,6 +600,7 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#0F172A",
   },
   chatBody: {
     flex: 1,

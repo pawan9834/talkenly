@@ -28,6 +28,9 @@ import {
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ZegoSendCallInvitationButton } from "@zegocloud/zego-uikit-prebuilt-call-rn";
+import ZegoUIKitPrebuiltCallService from "@zegocloud/zego-uikit-prebuilt-call-rn";
+import Svg, { Path } from "react-native-svg";
+import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useAuthStore } from "../store/authStore";
@@ -43,6 +46,31 @@ import {
 const { width } = Dimensions.get("window");
 type ProfileRouteProp = RouteProp<RootStackParamList, "Profile">;
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
+
+// --- SVG Icons ---
+const VideoCallSvg = ({ size = 26, color = "#FFFFFF" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M15 10L19.5528 7.72361C20.2177 7.39116 21 7.87465 21 8.61803V15.382C21 16.1253 20.2177 16.6088 19.5528 16.2764L15 14M5 18H13C14.1046 18 15 17.1046 15 16V8C15 6.89543 14.1046 6 13 6H5C3.89543 6 3 6.89543 3 8V16C3 17.1046 3.89543 18 5 18Z"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+const VoiceCallSvg = ({ size = 24, color = "#FFFFFF" }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.06 12.06 0 0 0 .57 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.06 12.06 0 0 0 2.81.57A2 2 0 0 1 22 16.92z"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NavProp>();
@@ -66,18 +94,18 @@ export default function ProfileScreen() {
   const [tempAbout, setTempAbout] = useState("");
   const colors = useMemo(
     () => ({
-      background: isDark ? "#111B21" : "#F0F2F5",
-      headerBg: isDark ? "#202C33" : "#008080",
-      cardBg: isDark ? "#111B21" : "#FFFFFF",
-      textPrimary: isDark ? "#E9EDEF" : "#111111",
-      textSecondary: isDark ? "#8696A0" : "#667781",
-      border: isDark ? "#222D34" : "#E9EDEF",
-      icon: "#8696A0",
-      accent: "#00A884",
-      modalBg: isDark ? "#202C33" : "#FFFFFF",
-      overlay: "rgba(0,0,0,0.5)",
-      actionIcon: "#00A884",
-      divider: isDark ? "#222D34" : "#E9EDEF",
+      background: "#0F172A", // Deep Navy
+      headerBg: "#1E293B",   // Slate Navy
+      cardBg: "#1E293B",
+      textPrimary: "#FFFFFF",
+      textSecondary: "#FFFFFF",
+      border: "rgba(255,255,255,0.1)",
+      icon: "#FF6B00",
+      accent: "#FF6B00",     // Vibrant Orange
+      modalBg: "#1E293B",
+      overlay: "rgba(0,0,0,0.7)",
+      actionIcon: "#FF6B00",
+      divider: "rgba(255,255,255,0.1)",
     }),
     [isDark],
   );
@@ -184,14 +212,14 @@ export default function ProfileScreen() {
       });
       try {
         await auth().currentUser?.updateProfile({ photoURL: downloadURL });
-      } catch (e) {}
+      } catch (e) { }
       try {
         const cacheKey = `profile_cache_${user.uid}`;
         const cachedStr = await AsyncStorage.getItem(cacheKey);
         const cachedObj = cachedStr ? JSON.parse(cachedStr) : {};
         cachedObj.photoURL = downloadURL;
         await AsyncStorage.setItem(cacheKey, JSON.stringify(cachedObj));
-      } catch (e) {}
+      } catch (e) { }
     } catch (e: any) {
       Alert.alert("Error", "Failed to update profile photo.");
     } finally {
@@ -213,14 +241,14 @@ export default function ProfileScreen() {
       setName(finalName);
       try {
         await auth().currentUser?.updateProfile({ displayName: finalName });
-      } catch (e) {}
+      } catch (e) { }
       try {
         const cacheKey = `profile_cache_${user.uid}`;
         const cachedStr = await AsyncStorage.getItem(cacheKey);
         const cachedObj = cachedStr ? JSON.parse(cachedStr) : {};
         cachedObj.displayName = finalName;
         await AsyncStorage.setItem(cacheKey, JSON.stringify(cachedObj));
-      } catch (e) {}
+      } catch (e) { }
     } catch (e: any) {
       Alert.alert("Error", "Failed to update name.");
     } finally {
@@ -330,7 +358,7 @@ export default function ProfileScreen() {
               <Ionicons name="person" size={120} color="#FFFFFF" />
             </View>
           )}
-          {}
+          { }
           <SafeAreaView style={styles.topFixedHeader}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
@@ -361,7 +389,7 @@ export default function ProfileScreen() {
             <Text style={styles.largePhoneText}>{phone}</Text>
           </View>
         </View>
-        {}
+        { }
         {!isMe && (
           <View style={[styles.actionBar, { backgroundColor: colors.cardBg }]}>
             <TouchableOpacity
@@ -377,36 +405,40 @@ export default function ProfileScreen() {
                 Message
               </Text>
             </TouchableOpacity>
-            <ZegoSendCallInvitationButton
-              invitees={[{ userID: targetUid || "", userName: name }]}
-              isVideoCall={false}
-              resourceID={"zego_uikit_call"}
-              backgroundColor="transparent"
-              width={width / 4}
-              height={60}
-              text="Audio"
-              textStyle={{
-                color: colors.accent,
-                fontSize: 12,
-                marginTop: 6,
-                fontWeight: "500",
+            <TouchableOpacity
+              style={styles.actionItem}
+              onPress={async () => {
+                if (!targetUid) return;
+                await ZegoUIKitPrebuiltCallService.sendCallInvitation(
+                  [{ userID: targetUid, userName: name }],
+                  false,
+                  navigation,
+                  { resourceID: "zego_uikit_call" }
+                );
               }}
-            />
-            <ZegoSendCallInvitationButton
-              invitees={[{ userID: targetUid || "", userName: name }]}
-              isVideoCall={true}
-              resourceID={"zego_uikit_call"}
-              backgroundColor="transparent"
-              width={width / 4}
-              height={60}
-              text="Video"
-              textStyle={{
-                color: colors.accent,
-                fontSize: 12,
-                marginTop: 6,
-                fontWeight: "500",
+            >
+              <VoiceCallSvg size={24} color={colors.textPrimary} />
+              <Text style={[styles.actionLabel, { color: colors.textPrimary }]}>
+                Audio
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionItem}
+              onPress={async () => {
+                if (!targetUid) return;
+                await ZegoUIKitPrebuiltCallService.sendCallInvitation(
+                  [{ userID: targetUid, userName: name }],
+                  true,
+                  navigation,
+                  { resourceID: "zego_uikit_call" }
+                );
               }}
-            />
+            >
+              <VideoCallSvg size={26} color={colors.textPrimary} />
+              <Text style={[styles.actionLabel, { color: colors.textPrimary }]}>
+                Video
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionItem}
               onPress={() =>
@@ -416,15 +448,15 @@ export default function ProfileScreen() {
                 )
               }
             >
-              <Ionicons name="radio-outline" size={24} color={colors.accent} />
-              <Text style={[styles.actionLabel, { color: colors.accent }]}>
+              <Ionicons name="radio-outline" size={24} color={colors.textPrimary} />
+              <Text style={[styles.actionLabel, { color: colors.textPrimary }]}>
                 Status
               </Text>
             </TouchableOpacity>
           </View>
         )}
         <View style={styles.detailsContent}>
-          {}
+          { }
           <View
             style={[
               styles.card,
@@ -483,7 +515,7 @@ export default function ProfileScreen() {
               </View>
             </View>
           </View>
-          {}
+          { }
           <View
             style={[
               styles.card,
@@ -517,7 +549,7 @@ export default function ProfileScreen() {
               </View>
             </TouchableOpacity>
           </View>
-          {}
+          { }
           <View
             style={[
               styles.card,
@@ -555,7 +587,7 @@ export default function ProfileScreen() {
               </View>
             </TouchableOpacity>
           </View>
-          {}
+          { }
           {!isMe && (
             <View style={{ marginTop: 24, paddingBottom: 40 }}>
               <TouchableOpacity
@@ -582,7 +614,7 @@ export default function ProfileScreen() {
           )}
         </View>
       </ScrollView>
-      {}
+      { }
       <Modal
         visible={editAboutModal}
         transparent

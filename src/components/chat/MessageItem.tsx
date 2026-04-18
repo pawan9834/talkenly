@@ -29,13 +29,13 @@ export interface ChatMessageUI {
   isMe: boolean;
   status: "sent" | "delivered" | "read" | "pending";
   type?:
-    | "text"
-    | "contact"
-    | "location"
-    | "liveLocation"
-    | "deleted"
-    | "image"
-    | "video";
+  | "text"
+  | "contact"
+  | "location"
+  | "liveLocation"
+  | "deleted"
+  | "image"
+  | "video";
   contactData?: { name: string; phones: string[] };
   locationData?: { latitude: number; longitude: number; address: string };
   liveLocationData?: {
@@ -129,19 +129,19 @@ const LocationCard: React.FC<{
         item.isMe ? styles.myBubble : styles.otherBubble,
       ]}
     >
-      {}
+      { }
       <TouchableOpacity onPress={openMaps} activeOpacity={0.85}>
         <Image
           source={{ uri: mapUrl }}
           style={styles.mapThumb}
           resizeMode="cover"
         />
-        {}
+        { }
         <View style={styles.mapPinOverlay}>
           <Ionicons name="location-sharp" size={28} color="#E53935" />
         </View>
       </TouchableOpacity>
-      {}
+      { }
       <View style={styles.locationInfo}>
         <Text
           style={[styles.locationAddress, { color: colors.textPrimary }]}
@@ -161,7 +161,7 @@ const LocationCard: React.FC<{
           Open in Maps
         </Text>
       </TouchableOpacity>
-      {}
+      { }
       <View
         style={[
           styles.bubbleFooter,
@@ -222,14 +222,14 @@ const LiveLocationCard: React.FC<{
           style={styles.mapThumb}
           resizeMode="cover"
         />
-        {}
+        { }
         <View style={styles.mapPinOverlay}>
           <View style={styles.livePinWrapper}>
             <View style={[styles.livePulseOuter, { borderColor: "#2196F3" }]} />
             <View style={[styles.livePinDot, { backgroundColor: "#2196F3" }]} />
           </View>
         </View>
-        {}
+        { }
         <View style={styles.liveBadge}>
           <Text style={styles.liveBadgeText}>● LIVE</Text>
         </View>
@@ -306,9 +306,9 @@ const ContactCard: React.FC<{
         item.isMe ? styles.myBubble : styles.otherBubble,
       ]}
     >
-      {}
+      { }
       <View style={styles.contactCardTop}>
-        {}
+        { }
         <View
           style={[styles.contactCardAvatar, { backgroundColor: colors.accent }]}
         >
@@ -334,7 +334,7 @@ const ContactCard: React.FC<{
           ))}
         </View>
       </View>
-      {}
+      { }
       <View
         style={[
           styles.contactCardDivider,
@@ -346,7 +346,7 @@ const ContactCard: React.FC<{
           View Contact
         </Text>
       </TouchableOpacity>
-      {}
+      { }
       <View style={styles.bubbleFooter}>
         {item.isStarred && (
           <Ionicons
@@ -528,7 +528,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
           </View>
         ) : (
           <View style={styles.videoPlaceholder}>
-            {}
+            { }
             {isPlaceholder ? (
               <Image
                 source={{ uri: sourceUri }}
@@ -562,7 +562,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
             )}
           </View>
         )}
-        {}
+        { }
         {typeof uploadProgress === "number" && (
           <View style={styles.uploadOverlay}>
             <CircularProgress
@@ -572,7 +572,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
             />
           </View>
         )}
-        {}
+        { }
         {isDownloading && renderDownloadProgress()}
       </View>
     );
@@ -595,7 +595,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
         ]}
         pointerEvents={isSelectionMode ? "none" : "auto"}
       >
-        {}
+        { }
         {isSelected && (
           <View
             style={[
@@ -661,7 +661,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                 ? [styles.myBubble, { backgroundColor: colors.bubbleSelf }]
                 : [styles.otherBubble, { backgroundColor: colors.bubbleOther }],
               (item.type === "image" || item.type === "video") &&
-                styles.mediaBubble,
+              styles.mediaBubble,
             ]}
           >
             <ReplyBox
@@ -669,7 +669,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
               colors={colors}
               onPress={() => item.replyTo && onReplyPress?.(item.replyTo.id)}
             />
-            {}
+            { }
             {renderMediaContent()}
             {item.text &&
               item.text !== "📷 Photo" &&
@@ -737,6 +737,8 @@ const styles = StyleSheet.create({
   otherMessageRow: { justifyContent: "flex-start" },
   bubble: {
     maxWidth: "85%",
+    minWidth: 80,
+    minHeight: 50,
     paddingHorizontal: 0,
     paddingVertical: 0,
     borderRadius: 6,

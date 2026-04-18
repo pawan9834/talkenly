@@ -40,6 +40,7 @@ export type RootStackParamList = {
   };
   ZegoUIKitPrebuiltCallWaitingScreen: any;
   ZegoUIKitPrebuiltCallInCallScreen: any;
+  Legal: { type: "terms" | "privacy" };
 };
 export interface UserProfile {
   uid: string;

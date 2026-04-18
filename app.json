@@ -4,12 +4,12 @@
     "slug": "talkenly",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/adaptive-icon.png",
+    "icon": "./assets/appicon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#075E54"
+      "backgroundColor": "#FFFFFF"
     },
     "android": {
       "package": "com.pawankumar.talkenly",
@@ -26,8 +26,8 @@
         "BLUETOOTH_CONNECT"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#075E54"
+        "foregroundImage": "./assets/appicon_padded.png",
+        "backgroundColor": "#FFFFFF"
       }
     },
     "plugins": [

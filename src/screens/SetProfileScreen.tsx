@@ -18,6 +18,8 @@ import storage from "@react-native-firebase/storage";
 import { useAuthStore } from "../store/authStore";
 import { normalizeIndianPhoneNumber } from "../lib/phoneUtils";
 import { requestUserPermission } from "../lib/notificationService";
+import { LinearGradient } from "expo-linear-gradient";
+import AnimatedBubbles from "../components/ui/AnimatedBubbles";
 export default function SetProfileScreen() {
   const { user, setHasProfile } = useAuthStore();
   const [name, setName] = useState("");
@@ -119,11 +121,13 @@ export default function SetProfileScreen() {
   if (success) {
     return (
       <View style={styles.successContainer}>
+        <LinearGradient colors={["#0F172A", "#1E293B"]} style={StyleSheet.absoluteFill} />
+        <AnimatedBubbles />
         <Text style={styles.successEmoji}>🎉</Text>
         <Text style={styles.successTitle}>Welcome, {name}!</Text>
         <Text style={styles.successText}>Your profile is all set.</Text>
         <ActivityIndicator
-          color="#075E54"
+          color="#FF6B00"
           size="large"
           style={{ marginTop: 24 }}
         />
@@ -135,6 +139,8 @@ export default function SetProfileScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <LinearGradient colors={["#0F172A", "#1E293B"]} style={StyleSheet.absoluteFill} />
+      <AnimatedBubbles />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile info</Text>
         <Text style={styles.headerSubtitle}>
@@ -158,7 +164,7 @@ export default function SetProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="Type your name here"
-          placeholderTextColor="#aaa"
+          placeholderTextColor="#94A3B8"
           value={name}
           onChangeText={setName}
           autoFocus={false}
@@ -186,7 +192,7 @@ export default function SetProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#0F172A",
     paddingHorizontal: 24,
     paddingTop: 80,
     paddingBottom: 40,
@@ -196,17 +202,17 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: "#075E54",
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#FFFFFF",
     marginBottom: 12,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: "#555",
+    fontSize: 15,
+    color: "#94A3B8",
     textAlign: "center",
     paddingHorizontal: 16,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   avatarContainer: {
     alignSelf: "center",
@@ -216,53 +222,66 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
+    borderWidth: 2,
+    borderColor: "#FF6B00",
   },
   avatarPlaceholder: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "#e1e1e1",
+    backgroundColor: "rgba(255,255,255,0.05)",
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderStyle: "dashed",
   },
   avatarCameraText: {
-    fontSize: 40,
+    fontSize: 36,
   },
   addPhotoText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
-    color: "#075E54",
-    marginTop: 4,
+    color: "#FF6B00",
+    marginTop: 8,
+    letterSpacing: 0.5,
   },
   inputContainer: {
     borderBottomWidth: 1.5,
-    borderBottomColor: "#075E54",
+    borderBottomColor: "#FF6B00",
     paddingBottom: 8,
     marginBottom: 20,
   },
   input: {
     fontSize: 18,
-    color: "#000",
+    color: "#FFFFFF",
   },
   readyBtn: {
-    backgroundColor: "#075E54",
-    height: 50,
-    borderRadius: 25,
+    backgroundColor: "#FF6B00",
+    height: 56,
+    borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
     marginTop: "auto",
+    elevation: 8,
+    shadowColor: "#FF6B00",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   readyBtnDisabled: {
-    backgroundColor: "#a3c9c4",
+    backgroundColor: "rgba(255, 107, 0, 0.4)",
+    elevation: 0,
+    shadowOpacity: 0,
   },
   readyBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "700",
   },
   successContainer: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#0F172A",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
@@ -272,16 +291,17 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   successTitle: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#075E54",
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#FFFFFF",
     marginBottom: 12,
     textAlign: "center",
   },
   successText: {
     fontSize: 16,
-    color: "#555",
+    color: "#94A3B8",
     textAlign: "center",
     lineHeight: 24,
   },
 });
+

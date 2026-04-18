@@ -18,9 +18,11 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ZegoSendCallInvitationButton } from "@zegocloud/zego-uikit-prebuilt-call-rn";
+import { ZegoUIKitPrebuiltCallService } from "@zegocloud/zego-uikit-prebuilt-call-rn";
 import { deleteChat, blockUser } from "../../lib/chatService";
 import { saveCallLog } from "../../lib/callLogService";
+import { LinearGradient } from "expo-linear-gradient";
+import AnimatedBubbles from "../ui/AnimatedBubbles";
 interface ChatHeaderProps {
   navigation: any;
   recipientName: string;
@@ -121,12 +123,14 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
     { label: "Report", icon: "thumbs-down-outline", lib: Ionicons },
   ];
   return (
-    <View style={{ backgroundColor: colors.headerBg }}>
+    <View style={styles.headerContainer}>
+      <LinearGradient colors={["#0F172A", "#1E293B"]} style={StyleSheet.absoluteFill} />
+      <AnimatedBubbles />
       <SafeAreaView
         edges={["top"]}
-        style={{ backgroundColor: colors.headerBg }}
+        style={{ flex: 1 }}
       >
-        <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
+        <View style={styles.header}>
           <View style={styles.headerLeft}>
             <TouchableOpacity
               onPress={() => navigation.goBack()}
@@ -171,14 +175,14 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           <View style={styles.headerRight}>
             {recipientUid && (
               <>
-                <ZegoSendCallInvitationButton
-                  invitees={[{ userID: recipientUid, userName: recipientName }]}
-                  isVideoCall={true}
-                  resourceID={"zego_uikit_call"}
-                  backgroundColor="transparent"
-                  width={44}
-                  height={44}
-                  onPressed={() => {
+                <TouchableOpacity
+                  style={styles.headerIcon}
+                  onPress={async () => {
+                    await ZegoUIKitPrebuiltCallService.sendCallInvitation({
+                      callees: [{ userID: recipientUid, userName: recipientName }],
+                      callType: 1,
+                      resourceID: "zego_uikit_call",
+                    });
                     saveCallLog({
                       name: recipientName,
                       phoneNumber: recipientUid,
@@ -187,15 +191,17 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                       avatar: recipientPhoto || undefined,
                     });
                   }}
-                />
-                <ZegoSendCallInvitationButton
-                  invitees={[{ userID: recipientUid, userName: recipientName }]}
-                  isVideoCall={false}
-                  resourceID={"zego_uikit_call"}
-                  backgroundColor="transparent"
-                  width={44}
-                  height={44}
-                  onPressed={() => {
+                >
+                  <Ionicons name="videocam" size={24} color="#FFFFFF" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.headerIcon}
+                  onPress={async () => {
+                    await ZegoUIKitPrebuiltCallService.sendCallInvitation({
+                      callees: [{ userID: recipientUid, userName: recipientName }],
+                      callType: 0,
+                      resourceID: "zego_uikit_call",
+                    });
                     saveCallLog({
                       name: recipientName,
                       phoneNumber: recipientUid,
@@ -204,7 +210,9 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                       avatar: recipientPhoto || undefined,
                     });
                   }}
-                />
+                >
+                  <Ionicons name="call" size={22} color="#FFFFFF" />
+                </TouchableOpacity>
               </>
             )}
             <TouchableOpacity
@@ -215,7 +223,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-        {}
+        { }
         <Modal
           visible={menuVisible}
           transparent
@@ -263,17 +271,24 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
 };
 export default ChatHeader;
 const styles = StyleSheet.create({
+  headerContainer: {
+    height: 116,
+    borderBottomLeftRadius: 45,
+    borderBottomRightRadius: 45,
+    overflow: "hidden",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
   header: {
-    height: 60,
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 8,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    paddingTop: 10,
   },
   headerLeft: {
     flexDirection: "row",

@@ -1,0 +1,24 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Standard White Responsive Background -->
+  <rect width="1024" height="1024" rx="200" fill="#FFFFFF"/>
+  
+  <!-- Centered Logo Group -->
+  <g transform="translate(512, 512) scale(1.4) translate(-512, -512)">
+    <!-- Primary Bubble (Solid Vibrant Orange) -->
+    <!-- Matches the shape from the provided image -->
+    <path d="M455 260 C335 260 238 348 238 456 C238 510 265 559 308 597 L292 684 L389 640 C410 651 432 652 455 652 C575 652 672 564 672 456 C672 348 575 260 455 260Z" 
+          fill="#F97316" />
+    
+    <!-- Secondary Overlapping Bubble (Semi-Transparent for that precise overlap effect) -->
+    <path d="M592 320 C472 320 375 408 375 516 C375 570 402 619 445 657 L429 744 L526 700 C547 711 569 712 592 712 C712 712 809 624 809 516 C809 408 712 320 592 320Z" 
+          fill="#F97316" 
+          fill-opacity="0.75" />
+    
+    <!-- Pulse Waveform line (Precise path matching the zigzag in the image) -->
+    <path d="M420 520 H465 L495 450 L560 590 L600 450 L630 520 H685" 
+          stroke="#9A3412" 
+          stroke-width="28" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+  </g>
+</svg>

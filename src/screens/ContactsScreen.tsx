@@ -29,6 +29,8 @@ import {
 } from "../lib/database";
 import { auth, firestore } from "../lib/firebase";
 import { generateChatId } from "../lib/chatService";
+import { LinearGradient } from "expo-linear-gradient";
+import AnimatedBubbles from "../components/ui/AnimatedBubbles";
 type NavProp = NativeStackNavigationProp<RootStackParamList, "Contacts">;
 const ITEM_HEIGHT = 72;
 const ContactItem = React.memo(
@@ -43,7 +45,15 @@ const ContactItem = React.memo(
     onPress: (contact: LocalContact) => void;
     onInvite?: (contact: LocalContact) => void;
   }) => {
-    const initials = item.name ? item.name.substring(0, 1).toUpperCase() : "?";
+    let initials = "?";
+    if (item.name) {
+      const parts = item.name.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        initials = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      } else {
+        initials = item.name.substring(0, 1).toUpperCase();
+      }
+    }
     const isRegistered = item.isRegistered === 1;
     const avatarUri = item.photoURL || item.imageUri;
     return (
@@ -108,18 +118,18 @@ export default function ContactsScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const colors = useMemo(
     () => ({
-      background: isDark ? "#111B21" : "#FFFFFF",
-      headerBg: isDark ? "#202C33" : "#008080",
+      background: "#0F172A",
+      headerBg: "#0F172A",
       headerText: "#FFFFFF",
-      textPrimary: isDark ? "#E9EDEF" : "#111111",
-      textSecondary: isDark ? "#8696A0" : "#667781",
-      border: isDark ? "#222D34" : "#F2F2F2",
-      icon: isDark ? "#8696A0" : "#FFFFFF",
-      statusBar: isDark ? "#202C33" : "#008080",
-      searchBg: isDark ? "#2A3942" : "#F0F2F5",
-      accent: "#00A884",
+      textPrimary: "#FFFFFF",
+      textSecondary: "#94A3B8",
+      border: "rgba(255,255,255,0.05)",
+      icon: "#94A3B8",
+      statusBar: "#0F172A",
+      searchBg: "#1E293B",
+      accent: "#FF6B00",
     }),
-    [isDark],
+    [],
   );
   const loadContacts = useCallback(async (query: string = "") => {
     try {
@@ -233,11 +243,13 @@ export default function ContactsScreen() {
     </View>
   );
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.headerBg }]}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.statusBar} />
-      <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
+      <View style={styles.headerContainer}>
+        <LinearGradient colors={["#0F172A", "#1E293B"]} style={StyleSheet.absoluteFill} />
+        <AnimatedBubbles />
+        <SafeAreaView edges={["top"]} style={styles.headerSafeArea}>
+          <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -258,6 +270,8 @@ export default function ContactsScreen() {
         >
           <Feather name="more-vertical" size={22} color="#FFFFFF" />
         </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </View>
       <Modal
         visible={menuVisible}
@@ -400,11 +414,24 @@ export default function ContactsScreen() {
           />
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  headerContainer: {
+    borderBottomLeftRadius: 45,
+    borderBottomRightRadius: 45,
+    overflow: "hidden",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    paddingBottom: 10,
+  },
+  headerSafeArea: {
+  },
   header: {
     height: 60,
     flexDirection: "row",
@@ -468,9 +495,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#00A884",
+    borderColor: "#FF6B00",
   },
-  inviteText: { color: "#00A884", fontSize: 13, fontWeight: "700" },
+  inviteText: { color: "#FF6B00", fontSize: 13, fontWeight: "700" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.1)" },
   dropdownMenu: {

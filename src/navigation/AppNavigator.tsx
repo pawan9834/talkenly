@@ -29,6 +29,7 @@ import BlockedContactsScreen from "../screens/BlockedContactsScreen";
 import MediaLinksDocsScreen from "../screens/MediaLinksDocsScreen";
 import StarredMessagesScreen from "../screens/StarredMessagesScreen";
 import ImageViewerScreen from "../screens/ImageViewerScreen";
+import LegalScreen from "../screens/LegalScreen";
 export type { NativeStackNavigationProp };
 const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function AppNavigator() {
@@ -94,6 +95,7 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Otp" component={OtpScreen} />
+            <Stack.Screen name="Legal" component={LegalScreen} />
           </>
         )}
       </Stack.Navigator>
