@@ -16,6 +16,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { auth, firestore } from "../lib/firebase";
 import { getCachedImage } from "../lib/imageHandler";
 import { MessageItem, ChatMessageUI } from "../components/chat";
+import { LinearGradient } from "expo-linear-gradient";
+import AnimatedBubbles from "../components/ui/AnimatedBubbles";
 export default function StarredMessagesScreen() {
   const navigation = useNavigation<any>();
   const theme = useColorScheme() ?? "light";
@@ -24,12 +26,12 @@ export default function StarredMessagesScreen() {
   const [starredMessages, setStarredMessages] = useState<any[]>([]);
   const myPhone = auth().currentUser?.phoneNumber;
   const colors = {
-    background: isDark ? "#111B21" : "#F0F2F5",
-    headerBg: isDark ? "#202C33" : "#008080",
-    cardBg: isDark ? "#1F2C34" : "#FFFFFF",
-    textPrimary: isDark ? "#E9EDEF" : "#111111",
-    textSecondary: isDark ? "#8696A0" : "#667781",
-    accent: "#00A884",
+    background: "#0F172A",
+    headerBg: "#0F172A",
+    cardBg: "#1E293B",
+    textPrimary: "#FFFFFF",
+    textSecondary: "#94A3B8",
+    accent: "#FF6B00",
   };
   useEffect(() => {
     if (!myPhone) return;
@@ -119,22 +121,22 @@ export default function StarredMessagesScreen() {
     </View>
   );
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.headerBg }]}
-    >
-      <StatusBar barStyle="light-content" backgroundColor={colors.headerBg} />
-      {}
-      <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-        >
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Starred messages</Text>
-        <TouchableOpacity style={styles.searchBtn}>
-          <Ionicons name="search" size={22} color="#FFF" />
-        </TouchableOpacity>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+      <View style={styles.headerContainer}>
+        <LinearGradient colors={["#0F172A", "#1E293B"]} style={StyleSheet.absoluteFill} />
+        <AnimatedBubbles />
+        <SafeAreaView edges={["top"]}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Starred messages</Text>
+            <TouchableOpacity style={styles.searchBtn}>
+              <Ionicons name="search" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </View>
       <View style={[styles.body, { backgroundColor: colors.background }]}>
         {loading ? (
@@ -166,11 +168,23 @@ export default function StarredMessagesScreen() {
           />
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  headerContainer: {
+    borderBottomLeftRadius: 45,
+    borderBottomRightRadius: 45,
+    overflow: "hidden",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    paddingBottom: 10,
+    marginBottom: 10,
+  },
   header: {
     height: 60,
     flexDirection: "row",

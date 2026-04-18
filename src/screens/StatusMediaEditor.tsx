@@ -243,7 +243,7 @@ export default function StatusMediaEditor() {
             <MaterialIcons
               name="edit"
               size={24}
-              color={mode === "draw" ? "#00A884" : "#FFF"}
+              color={mode === "draw" ? "#FF6B00" : "#FFF"}
             />
           </TouchableOpacity>
           <TouchableOpacity
@@ -257,7 +257,7 @@ export default function StatusMediaEditor() {
             <MaterialIcons
               name="title"
               size={24}
-              color={mode === "text" ? "#00A884" : "#FFF"}
+              color={mode === "text" ? "#FF6B00" : "#FFF"}
             />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={handleRotate}>
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     flex: 1,
-    backgroundColor: "#1F2C33",
+    backgroundColor: "rgba(30,41,59,0.8)",
     borderRadius: 25,
     paddingHorizontal: 15,
     marginRight: 10,
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: "#00A884",
+    backgroundColor: "#FF6B00",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     marginTop: 40,
     paddingHorizontal: 30,
     paddingVertical: 12,
-    backgroundColor: "#00A884",
+    backgroundColor: "#FF6B00",
     borderRadius: 25,
   },
   doneText: {

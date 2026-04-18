@@ -19,6 +19,8 @@ import type { RootStackParamList } from "../types";
 import { useAuthStore } from "../store/authStore";
 import { firestore } from "../lib/firebase";
 import { unblockUser } from "../lib/chatService";
+import { LinearGradient } from "expo-linear-gradient";
+import AnimatedBubbles from "../components/ui/AnimatedBubbles";
 type NavProp = NativeStackNavigationProp<RootStackParamList, "BlockedContacts">;
 interface BlockedUser {
   phone: string;
@@ -34,16 +36,16 @@ export default function BlockedContactsScreen() {
   const [loading, setLoading] = useState(true);
   const colors = useMemo(
     () => ({
-      background: isDark ? "#111B21" : "#F0F2F5",
-      headerBg: isDark ? "#202C33" : "#008080",
-      cardBg: isDark ? "#1F2C34" : "#FFFFFF",
-      textPrimary: isDark ? "#E9EDEF" : "#111111",
-      textSecondary: isDark ? "#8696A0" : "#667781",
-      border: isDark ? "#222D34" : "#E9EDEF",
-      accent: "#00A884",
+      background: "#0F172A",
+      headerBg: "#0F172A",
+      cardBg: "#1E293B",
+      textPrimary: "#FFFFFF",
+      textSecondary: "#94A3B8",
+      border: "rgba(255,255,255,0.05)",
+      accent: "#FF6B00",
       danger: "#F44336",
     }),
-    [isDark],
+    [],
   );
   const fetchBlockedUsers = useCallback(async () => {
     if (!user?.uid) return;
@@ -153,24 +155,24 @@ export default function BlockedContactsScreen() {
     </View>
   );
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
-      <StatusBar barStyle="light-content" backgroundColor={colors.headerBg} />
-      {}
-      <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-        >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.headerTitle}>Blocked contacts</Text>
-          <Text style={styles.headerSubtitle}>
-            {blockedUsers.length} blocked
-          </Text>
-        </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+      <View style={styles.headerContainer}>
+        <LinearGradient colors={["#0F172A", "#1E293B"]} style={StyleSheet.absoluteFill} />
+        <AnimatedBubbles />
+        <SafeAreaView edges={["top"]}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.headerTitle}>Blocked contacts</Text>
+              <Text style={styles.headerSubtitle}>
+                {blockedUsers.length} blocked
+              </Text>
+            </View>
+          </View>
+        </SafeAreaView>
       </View>
       {loading ? (
         <View style={styles.centered}>
@@ -194,24 +196,31 @@ export default function BlockedContactsScreen() {
           contentContainerStyle={styles.list}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  headerContainer: {
+    borderBottomLeftRadius: 45,
+    borderBottomRightRadius: 45,
+    overflow: "hidden",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    paddingBottom: 10,
+    marginBottom: 10,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 14,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   backBtn: { marginRight: 20 },
-  headerTitle: { color: "#FFFFFF", fontSize: 20, fontWeight: "500" },
+  headerTitle: { color: "#FFFFFF", fontSize: 20, fontWeight: "700" },
   headerSubtitle: {
     color: "rgba(255,255,255,0.7)",
     fontSize: 13,

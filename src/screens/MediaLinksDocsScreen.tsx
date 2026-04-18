@@ -22,6 +22,8 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../types";
 import { firestore } from "../lib/firebase";
 import { Collections } from "../lib/firebase";
+import { LinearGradient } from "expo-linear-gradient";
+import AnimatedBubbles from "../components/ui/AnimatedBubbles";
 type NavProp = NativeStackNavigationProp<RootStackParamList, "MediaLinksDocs">;
 type RouteType = RouteProp<RootStackParamList, "MediaLinksDocs">;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -44,16 +46,16 @@ export default function MediaLinksDocsScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const colors = useMemo(
     () => ({
-      background: isDark ? "#111B21" : "#F0F2F5",
-      headerBg: isDark ? "#202C33" : "#008080",
-      cardBg: isDark ? "#1F2C34" : "#FFFFFF",
-      textPrimary: isDark ? "#E9EDEF" : "#111111",
-      textSecondary: isDark ? "#8696A0" : "#667781",
-      border: isDark ? "#222D34" : "#E9EDEF",
-      accent: "#00A884",
-      tabIndicator: "#00A884",
+      background: "#0F172A",
+      headerBg: "#0F172A",
+      cardBg: "#1E293B",
+      textPrimary: "#FFFFFF",
+      textSecondary: "#94A3B8",
+      border: "rgba(255,255,255,0.05)",
+      accent: "#FF6B00",
+      tabIndicator: "#FF6B00",
     }),
-    [isDark],
+    [],
   );
   const fetchMessages = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -294,51 +296,50 @@ export default function MediaLinksDocsScreen() {
     </View>
   );
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
-      <StatusBar barStyle="light-content" backgroundColor={colors.headerBg} />
-      {}
-      <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-        >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.headerTitle}>{recipientName}</Text>
-          <Text style={styles.headerSubtitle}>Media, links and docs</Text>
-        </View>
-      </View>
-      {}
-      <View style={[styles.tabBar, { backgroundColor: colors.headerBg }]}>
-        {TABS.map((tab, index) => (
-          <TouchableOpacity
-            key={tab}
-            style={[
-              styles.tabItem,
-              activeTab === index && styles.tabItemActive,
-            ]}
-            onPress={() => switchTab(index)}
-          >
-            <Text
-              style={[
-                styles.tabLabel,
-                activeTab === index
-                  ? { color: "#FFFFFF", fontWeight: "700" }
-                  : { color: "rgba(255,255,255,0.6)" },
-              ]}
-            >
-              {tab}
-            </Text>
-            {activeTab === index && (
-              <View
-                style={[styles.tabIndicator, { backgroundColor: "#FFFFFF" }]}
-              />
-            )}
-          </TouchableOpacity>
-        ))}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+      <View style={styles.headerContainer}>
+        <LinearGradient colors={["#0F172A", "#1E293B"]} style={StyleSheet.absoluteFill} />
+        <AnimatedBubbles />
+        <SafeAreaView edges={["top"]}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.headerTitle}>{recipientName}</Text>
+              <Text style={styles.headerSubtitle}>Media, links and docs</Text>
+            </View>
+          </View>
+          <View style={styles.tabBar}>
+            {TABS.map((tab, index) => (
+              <TouchableOpacity
+                key={tab}
+                style={[
+                  styles.tabItem,
+                  activeTab === index && styles.tabItemActive,
+                ]}
+                onPress={() => switchTab(index)}
+              >
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    activeTab === index
+                      ? { color: "#FFFFFF", fontWeight: "700" }
+                      : { color: "rgba(255,255,255,0.6)" },
+                  ]}
+                >
+                  {tab}
+                </Text>
+                {activeTab === index && (
+                  <View
+                    style={[styles.tabIndicator, { backgroundColor: colors.accent }]}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </SafeAreaView>
       </View>
       {}
       <ScrollView
@@ -362,20 +363,30 @@ export default function MediaLinksDocsScreen() {
         <LinksTab />
         <DocsTab />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  headerContainer: {
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    overflow: "hidden",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    marginBottom: 8,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 14,
-    elevation: 4,
   },
   backBtn: { marginRight: 20 },
-  headerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "600" },
+  headerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "700" },
   headerSubtitle: {
     color: "rgba(255,255,255,0.7)",
     fontSize: 13,
@@ -383,7 +394,6 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: "row",
-    elevation: 2,
   },
   tabItem: {
     flex: 1,

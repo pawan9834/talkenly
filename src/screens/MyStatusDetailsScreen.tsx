@@ -26,6 +26,8 @@ import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system/legacy";
 import { auth } from "../lib/firebase";
 import { formatStatusTime } from "../lib/timeUtils";
+import { LinearGradient } from "expo-linear-gradient";
+import AnimatedBubbles from "../components/ui/AnimatedBubbles";
 export default function MyStatusDetailsScreen() {
   const theme = useColorScheme() ?? "light";
   const isDark = theme === "dark";
@@ -77,15 +79,15 @@ export default function MyStatusDetailsScreen() {
     });
   };
   const colors = {
-    background: isDark ? "#0B141A" : "#FFFFFF",
-    textPrimary: isDark ? "#E9EDEF" : "#111111",
-    textSecondary: isDark ? "#8696A0" : "#667781",
-    border: isDark ? "#222D34" : "#F2F2F2",
-    primary: "#00A884",
-    headerBg: isDark ? "#0B141A" : "#008080",
-    delete: "#F15C6D",
-    fabBg: "#00A884",
-    fabSecondary: isDark ? "#202C33" : "#F2F2F2",
+    background: "#0F172A",
+    textPrimary: "#FFFFFF",
+    textSecondary: "#94A3B8",
+    border: "rgba(255,255,255,0.05)",
+    primary: "#FF6B00",
+    headerBg: "#0F172A",
+    delete: "#F44336",
+    fabBg: "#FF6B00",
+    fabSecondary: "#1E293B",
   };
   useEffect(() => {
     const user = auth().currentUser;
@@ -305,24 +307,16 @@ export default function MyStatusDetailsScreen() {
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.headerBg} />
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: colors.headerBg,
-            paddingTop: insets.top,
-            height: 60 + insets.top,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-        >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My status</Text>
+      <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+      <View style={styles.headerContainer}>
+        <LinearGradient colors={["#0F172A", "#1E293B"]} style={StyleSheet.absoluteFill} />
+        <AnimatedBubbles />
+        <View style={[styles.header, { paddingTop: insets.top, height: 60 + insets.top }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>My status</Text>
+        </View>
       </View>
       <View style={{ flex: 1 }}>
         {loading ? (
@@ -380,7 +374,7 @@ export default function MyStatusDetailsScreen() {
                 <MaterialIcons
                   name="edit"
                   size={22}
-                  color={isDark ? "#E9EDEF" : "#555"}
+                  color="#FFFFFF"
                 />
               </TouchableOpacity>
               <TouchableOpacity
@@ -406,7 +400,7 @@ export default function MyStatusDetailsScreen() {
               style={[
                 styles.menuContainer,
                 {
-                  backgroundColor: isDark ? "#233138" : "#FFFFFF",
+                  backgroundColor: "#1E293B",
                   top: menuPosition.y,
                   left: menuPosition.x,
                 },
@@ -468,7 +462,7 @@ export default function MyStatusDetailsScreen() {
               style={[
                 styles.alertContainer,
                 {
-                  backgroundColor: isDark ? "#233138" : "#FFFFFF",
+                  backgroundColor: "#1E293B",
                   transform: [{ translateY: alertAnim }],
                 },
               ]}
@@ -540,7 +534,7 @@ export default function MyStatusDetailsScreen() {
           <View
             style={[
               styles.viewersContainer,
-              { backgroundColor: isDark ? "#202C33" : "#FFFFFF" },
+              { backgroundColor: "#1E293B" },
             ]}
           >
             <View
@@ -682,8 +676,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 12,
   },
+  headerContainer: {
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    overflow: "hidden",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    marginBottom: 8,
+  },
   header: {
-    height: 60,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
