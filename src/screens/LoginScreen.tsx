@@ -29,7 +29,7 @@ const { width, height } = Dimensions.get("window");
 const KEYBOARD_OFFSET = 5;
 
 const COLORS = {
-  primary: "#FF6B00",     // Vibrant Orange
+  primary: "#1E293B",     // Vibrant Orange
   onyx: "#0F172A",        // Deep Navy
   slate: "#1E293B",
   background: "#0F172A",  // Deep Navy background
